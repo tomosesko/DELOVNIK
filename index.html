@@ -1646,6 +1646,8 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
   "use strict";
 
   var K_TOKEN = "delovnik.token", K_BIO = "delovnik.bio", K_NAME = "delovnik.ime";
+  var K_ZADNJA = "delovnik.zadnja", K_EMAIL = "delovnik.email";
+  var MEJA_MS = 80 * 60 * 60 * 1000;   // po 80 h neaktivnosti ponovna prijava
   var $ = function (id) { return document.getElementById(id); };
 
   function shrani(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -1705,7 +1707,15 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
     }, 120);
     setTimeout(function () { clearInterval(strazar); }, 5000);
   })();
+  function oznaciDejavnost() { shrani(K_ZADNJA, String(Date.now())); }
+  function sejaPotekla() {
+    var z = parseInt(beri(K_ZADNJA), 10);
+    if (!z) return false;                       // brez zapisa ne odjavljamo
+    return (Date.now() - z) > MEJA_MS;
+  }
+
   function vstopi() {
+    oznaciDejavnost();
     document.body.classList.remove("gate");
     var d = $("dlgSettings");
     if (d && d.open) d.close();           // pozdravno okno ni več potrebno
@@ -1786,6 +1796,7 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
   window.__sync = function (state) {
     var token = beri(K_TOKEN);
     if (!token) return;
+    oznaciDejavnost();
     clearTimeout(cakalec);
     cakalec = setTimeout(function () {
       var telo = JSON.stringify({ action: "save", token: token, state: state });
@@ -1878,6 +1889,8 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
   function poPrijavi(o, ime) {
     shrani(K_TOKEN, o.token);
     shrani(K_NAME, ime || "");
+    if (o.state && o.state.profile && o.state.profile.email) shrani(K_EMAIL, o.state.profile.email);
+    oznaciDejavnost();
     if (o.state) window.__delovnikSet(o.state);
     postaviPill(); postaviRacun(); vstopi();
     bioNaVoljo().then(function (ok) {
@@ -1931,14 +1944,33 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
 
   /* ---------------- zagon ---------------- */
   var token = beri(K_TOKEN);
+  var poteklo = sejaPotekla();
+
+  /* Po 80 h neaktivnosti zahtevamo ponovno prijavo. Z vklopljenim odklepanjem
+     zadostuje obraz ali prst; brez njega je edina pot geslo, zato žeton zavržemo. */
+  if (token && poteklo && !beri(K_BIO)) {
+    zbrisi(K_TOKEN);
+    token = null;
+  }
+
   if (!token) {
     pokazi("gateLogin");
+    var zadnjiMail = beri(K_EMAIL);
+    if (zadnjiMail) {
+      $("liEmail").value = zadnjiMail;
+      setTimeout(function () { try { $("liPass").focus(); } catch (e) {} }, 80);
+    }
+    if (poteklo) {
+      sporocilo($("gateLoginMsg"), "Nekaj dni te ni bilo, zato te je aplikacija odjavila. Vpiši geslo.", "info");
+    }
   } else if (beri(K_BIO)) {
     pokazi("gateUnlock");
     var ime = beri(K_NAME);
     if (ime) $("gateUnlockName").textContent = "Pozdravljen, " + ime.split(" ")[0];
+    if (poteklo) sporocilo($("gateUnlockMsg"), "Nekaj dni te ni bilo — potrdi, da si ti.", "info");
     var poskus = function () {
-      pocisti($("gateUnlockMsg"));
+      var m = $("gateUnlockMsg");
+      if (m.className.indexOf("err") !== -1) pocisti(m);   // obvestilo o poteku pustimo
       bioOdkleni()
         .then(function () { postaviPill(); postaviRacun(); naloziSStreznika(token); })
         .catch(function () { sporocilo($("gateUnlockMsg"), "Odklepanje ni uspelo. Poskusi znova ali se prijavi z geslom."); });
