@@ -1,0 +1,62 @@
+POROČILO O DELOVNEM ČASU
+Zaposleni: Tomi Šeško  <sesko.tomi1@gmail.com>
+Podjetje:  Šeško Developement
+Vodja:     Megi Podbregar  <megi.podbregar@gmail.com>
+Obdobje:   september 2026
+
+--- SKUPAJ ---
+Delo:     85:30  (79,2 %)
+Vožnja:   17:30  (16,2 %)
+Počitek:  5:00  (4,6 %)
+Skupaj:   108:00
+Dnevi:    11  (vikendi: 3, 21:50)
+
+--- TEDENSKE OCENE (vsak teden posebej) ---
+
+Teden 36 · 31.08. – 06.09.
+  Ocena tveganja dela:    3/5 (zmerno)
+  Kompleksnost problemov: 4/5 (zahtevno)
+  Pripombe:               Delo na višini ob vetru; menjava vitla zahtevnejša od načrtovane.
+  Ure v tednu:            45:30 delo · 9:35 vožnja · 2:30 počitek
+
+Teden 37 · 07.09. – 13.09.
+  Ocena tveganja dela:    2/5 (nizko)
+  Kompleksnost problemov: 3/5 (zmerno)
+  Pripombe:               Rutinski teden, brez zapletov.
+  Ure v tednu:            40:00 delo · 7:55 vožnja · 2:30 počitek
+
+Teden 38 · 14.09. – 20.09.
+  Ocena:                  ni bilo oddano
+  Ure v tednu:            0:00 delo · 0:00 vožnja · 0:00 počitek
+
+Teden 39 · 21.09. – 27.09.
+  Ocena:                  ni bilo oddano
+  Ure v tednu:            0:00 delo · 0:00 vožnja · 0:00 počitek
+
+Teden 40 · 28.09. – 04.10.
+  Ocena:                  ni bilo oddano
+  Ure v tednu:            0:00 delo · 0:00 vožnja · 0:00 počitek
+
+Povprečje meseca: tveganje 2,5/5 · kompleksnost 3,5/5  (2 ocenjeni tedna)
+
+--- MESEČNA OCENA ---
+Učinkovitost:           85 %
+Število poškodb:        1
+Število resnih poškodb: 0
+Opombe: Ena lažja poškodba: ureznina na roki pri menjavi vrvi, obdelana na kraju samem.
+
+--- PO DNEVIH ---
+dat.    dan  delo          vožnja                    počitek  delo    vožnja
+01.09.  tor  07:00-15:30   06:15-07:00 15:30-16:15   0:30     8:00    1:30   Adria Celje – menjava vitla
+02.09.  sre  07:00-16:00   06:00-07:00 16:00-17:10   0:30     8:30    2:10
+03.09.  čet  07:00-15:30   06:30-07:00 15:30-16:00   0:30     8:00    1:00   Servis CTT 132
+04.09.  pet  07:00-17:00   05:45-07:00 17:00-18:30   0:30     9:30    2:45   Maribor – postavitev
+05.09.  sob  07:00-14:00   06:30-07:00 14:00-14:40   0:30     6:30    1:10   [vikend]
+06.09.  ned  08:00-13:00   07:30-08:00 13:00-13:30   —        5:00    1:00   [vikend]   Vikend – nujna intervencija
+08.09.  tor  07:00-15:30   06:15-07:00 15:30-16:15   0:30     8:00    1:30
+09.09.  sre  07:00-15:30   06:15-07:00 15:30-16:15   0:30     8:00    1:30   Pregled vitla
+10.09.  čet  07:00-16:30   06:00-07:00 16:30-17:45   0:30     9:00    2:15
+11.09.  pet  07:00-15:30   06:15-07:00 15:30-16:15   0:30     8:00    1:30
+12.09.  sob  07:00-14:30   06:30-07:00 14:30-15:10   0:30     7:00    1:10   [vikend]
+
+Poslano samodejno 07.09.2026 · Šeško Developement
