@@ -1,0 +1,2030 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delovnik in vožnja — evidenca delovnih ur in vožnje</title>
+<meta name="description" content="Preprosta evidenca delovnih ur, vožnje in počitka. Vpišeš ure vsak dan, vsak teden oceniš tveganje in kompleksnost dela, ob koncu meseca gre poročilo samodejno na e-pošto vodje.">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Delovnik in vožnja — evidenca delovnih ur in vožnje">
+<meta property="og:description" content="Preprosta evidenca delovnih ur, vožnje in počitka. Vpišeš ure vsak dan, vsak teden oceniš tveganje in kompleksnost dela, ob koncu meseca gre poročilo samodejno na e-pošto vodje.">
+<meta property="og:locale" content="sl_SI">
+<meta name="theme-color" content="#1B4E9B">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Delovnik">
+<script src="https://cdn.jsdelivr.net/npm/@github/webauthn-json@2.1.1/dist/browser-global/webauthn-json.browser-global.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Bodoni+Moda:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>:root{color-scheme:light}html,body{background:#fff}*{margin:0}img{max-width:100%}
+/* zaslon za prijavo; dokler traja, je aplikacija skrita */
+body.gate > *:not(#gate){display:none !important}
+#gate{display:none;position:fixed;inset:0;z-index:200;background:#fff;overflow-y:auto;
+      padding:32px 18px;align-items:flex-start;justify-content:center}
+body.gate #gate{display:flex}
+.gate-card{width:100%;max-width:400px}
+.gate-logo{display:flex;justify-content:center;margin-bottom:26px}
+.gate-card h1{font-size:20px;font-weight:700;letter-spacing:-0.02em;margin:0 0 4px}
+.gate-card .lead{font-size:13px;color:#79838D;margin:0 0 22px;line-height:1.5}
+.gate-form{display:flex;flex-direction:column;gap:13px}
+#gate [hidden]{display:none !important}   /* display:flex sicer prebije atribut hidden */
+.gate-msg{display:none;font-size:13px;border-radius:8px;padding:10px 12px;line-height:1.45}
+.gate-msg.on{display:block}
+.gate-msg.err{background:#B3261E14;color:#8E2A22;border:1px solid #B3261E33}
+.gate-msg.info{background:#1B4E9B14;color:#153D7A;border:1px solid #1B4E9B33}
+.gate-alt{margin-top:20px;padding-top:18px;border-top:1px solid #E1E6EC;text-align:center;font-size:13px;color:#79838D}
+.gate-alt button{background:none;border:0;color:#1B4E9B;font-weight:600;cursor:pointer;font-size:13px;
+                 padding:2px 4px;text-decoration:underline;text-underline-offset:2px}
+.gate-bio{width:100%;justify-content:center;display:flex;align-items:center;gap:9px}
+.gate-foot{margin-top:22px;font-size:11.5px;color:#79838D;text-align:center;line-height:1.5}
+#gate .btn{width:100%;padding:14px 17px;font-size:15px;transition:background .12s,box-shadow .12s}
+#gate .btn.primary:hover{background:#153D7A;box-shadow:0 2px 10px -2px #1B4E9B66}
+
+/* jasen znak, na katerem polju je miška in katero je aktivno */
+#gate .field{border-radius:10px;padding:2px;margin:-2px;transition:background .12s}
+#gate .field:hover{background:#1B4E9B0A}
+#gate .field label{transition:color .12s}
+#gate .field:hover label,#gate .field:focus-within label{color:#1B4E9B}
+#gate .field input{cursor:text;transition:border-color .12s,background .12s,box-shadow .12s}
+#gate .field input:hover{border-color:#1B4E9B;background:#F2F6FB}
+#gate .field input:focus{border-color:#1B4E9B;background:#fff;outline:none;
+                         box-shadow:0 0 0 3px #1B4E9B26}
+#gate .gate-alt button:hover{color:#153D7A;background:#1B4E9B0F;border-radius:6px}
+.gate-sep{display:flex;align-items:center;gap:12px;color:#79838D;font-size:12px;margin:2px 0}
+.gate-sep::before,.gate-sep::after{content:"";flex:1;height:1px;background:#E1E6EC}
+@media (max-width:560px){
+  #syncPill .pill-txt{display:none}        /* na telefonu zadostuje barvna pika */
+  #syncPill{padding:0 13px}
+  #gate{padding:24px 16px}
+  .gate-logo{margin-bottom:20px}
+  .gate-card h1{font-size:22px}
+  #gate .field input{padding:13px 12px;font-size:16px}
+  .gate-alt button{padding:8px 6px}
+}
+</style>
+</head>
+<body class="gate">
+
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">
+      <div class="logo lg" aria-label="Šeško Developement">
+        <span class="word">ŠEŠKO</span><span class="sub">Developement</span>
+      </div>
+    </div>
+
+    <!-- ponudba hitre prijave, takoj po registraciji -->
+    <div id="gateBio" hidden>
+      <h1>Račun je narejen</h1>
+      <p class="lead" id="gateBioLead">Vklopi hitro prijavo, da ti ne bo treba tipkati gesla.</p>
+      <div class="gate-msg" id="gateBioMsg"></div>
+      <div class="gate-form">
+        <button type="button" class="btn primary gate-bio" id="btnBioOn">Vklopi hitro prijavo</button>
+      </div>
+      <div class="gate-alt">
+        <button type="button" id="bioSkip">Preskoči, vpisoval bom geslo</button>
+      </div>
+    </div>
+
+    <!-- prijava -->
+    <form id="gateLogin" class="gate-form" hidden>
+      <div>
+        <h1>Prijava</h1>
+        <p class="lead">Vpiši se in tvoje ure so na vseh napravah.</p>
+      </div>
+      <div class="gate-msg" id="gateLoginMsg"></div>
+
+      <button type="button" class="btn primary" id="btnPasskeyLogin" hidden>Prijava s Face ID</button>
+      <div class="gate-sep" id="gateSep" hidden><span>ali z geslom</span></div>
+
+      <div class="field">
+        <label for="liEmail">E-mail</label>
+        <input type="email" id="liEmail" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="liPass">Geslo</label>
+        <input type="password" id="liPass" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn ghost" id="btnLogin">Prijava z geslom</button>
+      <div class="gate-alt">Še nimaš računa? <button type="button" id="toRegister">Ustvari ga</button></div>
+    </form>
+
+    <!-- registracija -->
+    <form id="gateRegister" class="gate-form" hidden>
+      <div>
+        <h1>Nov račun</h1>
+        <p class="lead">Enkraten vpis. Potem samo vpisuješ ure.</p>
+      </div>
+      <div class="gate-msg" id="gateRegMsg"></div>
+      <div class="field">
+        <label for="rgName">Tvoje ime in priimek</label>
+        <input type="text" id="rgName" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="rgEmail">Tvoj e-mail</label>
+        <input type="email" id="rgEmail" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="rgPass">Geslo</label>
+        <input type="password" id="rgPass" autocomplete="new-password" minlength="8" required>
+        <span class="hint">Vsaj 8 znakov. Ne uporabi gesla, ki ga imaš že kje drugje.</span>
+      </div>
+      <div class="field">
+        <label for="rgCompany">Podjetje</label>
+        <input type="text" id="rgCompany" autocomplete="organization">
+      </div>
+      <div class="field">
+        <label for="rgBossName">Ime in priimek vodje</label>
+        <input type="text" id="rgBossName">
+      </div>
+      <div class="field">
+        <label for="rgBoss">E-mail vodje</label>
+        <input type="email" id="rgBoss" required>
+        <span class="hint">Tja gre mesečno poročilo.</span>
+      </div>
+      <button type="submit" class="btn primary" id="btnRegister">Ustvari račun</button>
+      <div class="gate-alt">Račun že imaš? <button type="button" id="toLogin">Prijavi se</button></div>
+    </form>
+
+    <p class="gate-foot">Ure se shranjujejo sproti in so na voljo na vsaki napravi, kjer se prijaviš.</p>
+  </div>
+</div>
+
+<style>
+/* Deliberately single light theme: the page stays white on every host. */
+:root{
+  --page:#FFFFFF;
+  --card:#FFFFFF;
+  --band:#F6F8FA;
+  --field:#EDF1F6;
+  --field-edge:#C6D2E0;
+  --edge:#E1E6EC;
+  --edge-strong:#CBD3DC;
+  --ink:#101820;
+  --ink-2:#4A5560;
+  --ink-3:#79838D;
+  --brand:#1B4E9B;
+  --brand-dark:#153D7A;
+  --brand-soft:#1B4E9B14;
+  --work:#1B4E9B;
+  --drive:#B8781F;
+  --rest:#5F7078;
+  --ok:#3F7D53;
+  --mid:#96690F;
+  --high:#A8492C;
+  --crit:#8E2A22;
+  --hi:#B3261E;
+  --ok-bg:#3F7D5316;
+  --mid-bg:#96690F16;
+  --crit-bg:#8E2A2216;
+  --shadow:0 1px 2px #10182008, 0 10px 30px -20px #10182033;
+}
+
+*{box-sizing:border-box}
+html{background:#FFFFFF}
+body{
+  margin:0;background:var(--page);color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Arial,sans-serif;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-0.018em;font-weight:700}
+button,input,select,textarea{font:inherit;color:var(--ink)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+}
+
+/* ---------- logo ---------- */
+.logo{display:flex;flex-direction:column;gap:1px;line-height:1;user-select:none}
+.logo .word{
+  font-family:"Bodoni Moda","Didot","Times New Roman",serif;
+  font-weight:900;color:var(--brand);letter-spacing:-0.005em;line-height:.92;
+}
+.logo .sub{
+  font-family:"Archivo",sans-serif;font-weight:700;color:var(--brand);
+  letter-spacing:.33em;text-transform:uppercase;
+}
+.logo.lg .word{font-size:52px}
+.logo.lg .sub{font-size:11px;margin-top:7px;margin-left:.22em}
+.logo.sm .word{font-size:25px}
+.logo.sm .sub{font-size:7.2px;margin-top:3px;margin-left:.2em}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:30;background:#FFFFFFF2;backdrop-filter:blur(10px);border-bottom:1px solid var(--edge)}
+.topbar-in{max-width:940px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topbar .who{margin-right:auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.topbar .who b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .who span{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.divider-v{width:1px;height:30px;background:var(--edge)}
+.monthnav{display:flex;align-items:center;gap:2px;background:var(--band);border:1px solid var(--edge);border-radius:8px;padding:2px}
+.monthnav button{background:none;border:0;cursor:pointer;color:var(--ink-2);width:30px;height:30px;border-radius:6px;display:grid;place-items:center;font-size:16px;line-height:1}
+.monthnav button:hover{background:#E7ECF2;color:var(--ink)}
+.monthnav .label{min-width:128px;text-align:center;font-weight:600;font-size:13px;padding:0 6px;font-variant-numeric:tabular-nums}
+.icon-btn{background:var(--card);border:1px solid var(--edge-strong);border-radius:8px;height:34px;padding:0 12px;cursor:pointer;color:var(--ink-2);font-size:13px;font-weight:500}
+.icon-btn:hover{background:var(--band);color:var(--ink)}
+
+main{max-width:940px;margin:0 auto;padding:22px 20px 80px}
+
+/* ---------- banners ---------- */
+.banners{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.banners:empty{display:none}
+.banner{display:flex;gap:12px;align-items:center;border:1px solid var(--edge);border-left-width:3px;border-radius:8px;background:var(--card);padding:11px 14px;font-size:13.5px}
+.banner.warn{border-left-color:var(--mid);background:var(--mid-bg)}
+.banner.go{border-left-color:var(--ok);background:var(--ok-bg)}
+.banner.info{border-left-color:var(--brand);background:var(--brand-soft)}
+.banner.mirno{border-left-color:var(--edge-strong);background:var(--band);color:var(--ink-2)}
+.banner p{margin:0;flex:1}
+.banner button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.banner button:hover{background:var(--brand-dark)}
+
+/* ---------- sections ---------- */
+.step{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}
+.step .n{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--brand);border:1px solid var(--brand);border-radius:5px;padding:1px 6px;flex:none}
+.step h2{font-size:17px;font-weight:700}
+.step p{margin:0;font-size:12.5px;color:var(--ink-3);flex:1}
+section.block{margin-bottom:38px}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:20px 22px;box-shadow:var(--shadow)}
+
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:11.5px;font-weight:600;letter-spacing:.03em;color:var(--ink-2)}
+.field input,.field select,.field textarea{background:var(--field);border:1px solid var(--field-edge);border-radius:8px;padding:9px 11px;width:100%}
+.field input:hover,.field textarea:hover{border-color:#A9B9CC}
+.field input:focus,.field textarea:focus{border-color:var(--brand);background:#F5F8FC}
+.field textarea{resize:vertical;min-height:64px}
+.field .hint{font-size:11.5px;color:var(--ink-3);min-height:1em}
+
+input[type="range"]{height:26px}
+.datumvrsta{display:grid;grid-template-columns:minmax(150px,200px) auto;gap:12px;align-items:end;margin-bottom:4px}
+.hitri{display:flex;gap:8px;padding-bottom:22px}
+.rowgrid{display:grid;gap:13px 14px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.timepair{display:grid;grid-template-columns:1fr auto 1fr;gap:7px;align-items:end;max-width:330px}
+.timepair .dash{padding-bottom:10px;color:var(--ink-3)}
+.seg-head{display:flex;align-items:center;gap:9px;margin:20px 0 10px;padding-top:16px;border-top:1px solid var(--edge);flex-wrap:wrap}
+.seg-head.first{border-top:0;padding-top:0;margin-top:0}
+.swatch{width:10px;height:10px;border-radius:2px;flex:none}
+.seg-head b{font-size:13.5px;font-weight:600}
+.seg-head .opt{font-size:11.5px;color:var(--ink-3)}
+.seg-head .amt{margin-left:auto;font-size:14px;font-weight:600;color:var(--ink-2)}
+
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:18px}
+.btn{border:1px solid transparent;border-radius:8px;padding:10px 17px;font-size:13.5px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-dark)}
+.btn.ghost{background:var(--card);border-color:var(--edge-strong);color:var(--ink-2)}
+.btn.ghost:hover{background:var(--band);color:var(--ink)}
+.btn:disabled,input:disabled,textarea:disabled{opacity:.5;cursor:not-allowed}
+input:disabled,textarea:disabled{background:var(--band)}
+.saved-flash{font-size:12.5px;font-weight:600;color:var(--ok);opacity:0;transition:opacity .2s}
+.saved-flash.on{opacity:1}
+
+/* ---------- day list ---------- */
+.listhead{display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.listhead .spacer{flex:1}
+.chip{background:var(--card);border:1px solid var(--edge-strong);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;color:var(--ink-2)}
+.chip:hover{background:var(--band)}
+.chip[aria-pressed="true"]{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+.days{display:flex;flex-direction:column;gap:1px;background:var(--edge);border:1px solid var(--edge);border-radius:11px;overflow:hidden}
+.day{background:var(--card);display:grid;grid-template-columns:64px minmax(0,1fr) 84px 128px 66px;gap:14px;align-items:center;padding:12px 15px}
+.day .splitwrap{width:84px}
+.day.weekend{background:var(--band)}
+.day .date{display:flex;flex-direction:column;gap:1px}
+.day .date .d{font-size:14px;font-weight:600}
+.day .date .w{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.day.weekend .date .w{color:var(--drive);font-weight:700}
+.day .times{font-size:12.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px;min-width:0}
+.day .times span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day .times i{font-style:normal;color:var(--ink-3)}
+.split{display:flex;height:8px;gap:2px}
+.split i{display:block;height:100%;border-radius:2px}
+.day .amt{text-align:right;font-size:13px;font-weight:600}
+.day .amt small{display:block;font-size:11px;color:var(--ink-3);font-weight:400}
+.day .rowbtns{display:flex;justify-content:flex-end;gap:2px}
+.day .rowbtns button{background:none;border:0;cursor:pointer;color:var(--ink-3);border-radius:6px;width:28px;height:28px;display:grid;place-items:center;font-size:13px}
+.day .rowbtns button:hover{background:var(--band);color:var(--ink)}
+.empty{text-align:center;padding:34px 20px;color:var(--ink-3);font-size:13.5px;border:1px dashed var(--edge-strong);border-radius:11px;background:var(--card)}
+
+/* ---------- weeks ---------- */
+.week{background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:17px 19px;margin-bottom:12px;box-shadow:var(--shadow)}
+.week > header{display:flex;align-items:center;gap:10px;margin-bottom:3px;flex-wrap:wrap}
+.week h3{font-size:14.5px;font-weight:600}
+.week .status{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+.status.todo{background:var(--mid-bg);color:var(--mid)}
+.status.done{background:var(--ok-bg);color:var(--ok)}
+.status.open{background:var(--band);color:var(--ink-3)}
+.week .wkhours{font-size:12.5px;color:var(--ink-3);margin:0 0 14px}
+.week.current{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft),var(--shadow)}
+
+/* saved / read-only week rows */
+.wrow{background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:12px 16px;margin-bottom:9px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:center}
+.wrow .id{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;min-width:0}
+.wrow .id b{font-size:13.5px;font-weight:600}
+.wrow .id span{font-size:12px;color:var(--ink-3)}
+.wrow .vals{grid-column:1/2;display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.wrow .vals em{font-style:normal;color:var(--ink-3)}
+.wrow .pripombe{grid-column:1/-1;font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--edge);padding-top:9px}
+.wrow .act{grid-row:1/3;align-self:center}
+.wrow.unrated{border-style:dashed}
+.lvl{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.lvl i{width:8px;height:8px;border-radius:2px;flex:none}
+.lockbar{display:flex;align-items:center;gap:9px;background:var(--band);border:1px solid var(--edge);border-radius:9px;padding:10px 14px;font-size:12.5px;color:var(--ink-2);margin-bottom:14px}
+.lockbar b{font-weight:600}
+
+/* archive */
+.arch-month{border:1px solid var(--edge);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.arch-month > summary{cursor:pointer;list-style:none;padding:11px 14px;background:var(--band);display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600}
+.arch-month > summary::-webkit-details-marker{display:none}
+.arch-month > summary::before{content:"▸";color:var(--ink-3);transition:transform .15s}
+.arch-month[open] > summary::before{transform:rotate(90deg)}
+.arch-month > summary .tot{margin-left:auto;font-size:12px;font-weight:500;color:var(--ink-3)}
+.arch-day{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:12px;padding:9px 14px;border-top:1px solid var(--edge);font-size:12.5px;align-items:center}
+.arch-day.we{background:var(--band)}
+.arch-day .dd{font-weight:600}
+.arch-day .dd em{font-style:normal;font-weight:400;color:var(--ink-3)}
+.arch-day .tt{color:var(--ink-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arch-day .hh{font-weight:600;text-align:right}
+.arch-open{padding:10px 14px;border-top:1px solid var(--edge)}
+dialog.wide{max-width:620px}
+.scaleq{margin-bottom:15px}
+.scaleq > .q{display:flex;align-items:baseline;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+.scaleq > .q label{font-size:13px;font-weight:600}
+.scaleq > .q .read{font-size:12px;color:var(--ink-2)}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-width:400px}
+.scale input{position:absolute;opacity:0;width:0;height:0}
+.scale label{display:grid;place-items:center;padding:9px 0;cursor:pointer;border:1px solid var(--field-edge);border-radius:7px;background:var(--field);font-size:14px;font-weight:600}
+.scale label:hover{border-color:var(--ink-3)}
+.scale input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
+.scale input:checked + label{color:#fff;border-color:transparent}
+.scale input:checked + label[data-lv="1"],.scale input:checked + label[data-lv="2"]{background:var(--ok)}
+.scale input:checked + label[data-lv="3"]{background:var(--mid)}
+.scale input:checked + label[data-lv="4"]{background:var(--high)}
+.scale input:checked + label[data-lv="5"]{background:var(--crit)}
+
+/* ---------- summary ---------- */
+.rail{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:28px;align-items:center;background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:24px;box-shadow:var(--shadow)}
+.donut-wrap{position:relative;width:184px;height:184px;justify-self:center}
+.donut{display:block;width:184px;height:184px}
+.donut .seg{transition:opacity .15s ease}
+.donut-wrap[data-hover] .seg{opacity:.3}
+.donut-wrap[data-hover] .seg.on{opacity:1}
+.donut-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+.donut-center .big{font-size:27px;font-weight:600;letter-spacing:-0.02em}
+.donut-center .small{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-top:3px}
+.tip{position:absolute;z-index:5;pointer-events:none;transform:translate(-50%,-124%);background:var(--ink);color:#fff;border-radius:6px;padding:5px 9px;font-size:12px;white-space:nowrap;opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.legend{display:flex;flex-direction:column;gap:1px;background:var(--edge);border:1px solid var(--edge);border-radius:10px;overflow:hidden}
+.lrow{background:var(--card);display:grid;grid-template-columns:16px minmax(0,1fr) auto 64px;gap:12px;align-items:center;padding:12px 15px}
+.lrow .name{font-size:13.5px;font-weight:600}
+.lrow .h{font-size:15px;font-weight:600}
+.lrow .p{font-size:12.5px;color:var(--ink-3);text-align:right}
+.lrow.total{background:var(--band)}
+.lrow.total .name,.lrow.total .h{font-weight:700}
+.railnote{font-size:12.5px;color:var(--ink-3);margin:12px 0 0}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px;background:var(--edge);border:1px solid var(--edge);border-radius:11px;overflow:hidden;margin-top:16px}
+.stat{background:var(--card);padding:13px 15px}
+.stat .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.stat .v{font-size:19px;font-weight:600;letter-spacing:-0.02em;margin-top:2px}
+.stat.alarm .v{color:var(--crit)}
+
+pre.report b{color:var(--hi);font-weight:700}
+pre.report{background:var(--band);border:1px solid var(--edge);border-radius:9px;padding:14px 16px;overflow-x:auto;font-size:12px;line-height:1.62;margin:10px 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink-2);max-height:360px;overflow-y:auto}
+details.reportbox{margin-top:16px}
+details.reportbox summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2);padding:6px 0;list-style:none;display:flex;align-items:center;gap:7px}
+details.reportbox summary::-webkit-details-marker{display:none}
+details.reportbox summary::before{content:"▸";color:var(--ink-3);transition:transform .15s}
+details.reportbox[open] summary::before{transform:rotate(90deg)}
+
+.sendbox{border:1px solid var(--brand);border-radius:12px;padding:18px 20px;background:var(--brand-soft);margin-top:16px}
+.sendbox .to{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px;margin-bottom:14px}
+.sendbox .to code{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:#fff;border:1px solid var(--edge-strong);border-radius:5px;padding:3px 8px}
+.earlybox{border:1px solid var(--edge-strong);border-radius:12px;padding:18px 20px;background:var(--band);margin-top:14px}
+.earlygrid{display:grid;gap:13px 14px;grid-template-columns:minmax(200px,1fr) minmax(200px,1.4fr)}
+.earlybox select{background:var(--field);border:1px solid var(--field-edge);border-radius:8px;padding:9px 11px;width:100%}
+.note{font-size:12px;color:var(--ink-3);margin:12px 0 0;line-height:1.55}
+
+dialog{border:1px solid var(--edge);border-radius:14px;background:#fff;color:var(--ink);padding:0;max-width:470px;width:calc(100% - 28px);box-shadow:0 30px 70px -28px #10182055}
+dialog::backdrop{background:#0e1a2ba6;backdrop-filter:blur(3px)}
+dialog .dlg-in{padding:24px 26px}
+dialog .dlg-logo{display:flex;justify-content:center;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--edge)}
+dialog h2{font-size:17px;margin-bottom:5px}
+dialog .sub{font-size:12.5px;color:var(--ink-3);margin:0 0 18px;line-height:1.5}
+dialog .stack{display:flex;flex-direction:column;gap:13px}
+.divider{border-top:1px solid var(--edge);margin:20px 0 14px}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;border-radius:9px;padding:10px 18px;font-size:13.5px;font-weight:500;opacity:0;pointer-events:none;transition:all .2s;z-index:60}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:760px){
+  /* prst rabi vsaj ~44 px; na namizju ostane vse kompaktno */
+  .icon-btn{height:42px;padding:0 14px}
+  .monthnav button{width:38px;height:38px;font-size:18px}
+  .monthnav .label{min-width:106px;font-size:12.5px}
+  .chip{padding:10px 15px;font-size:12.5px}
+  .btn{padding:13px 18px;font-size:14px}
+  .day .rowbtns button{width:40px;height:40px;font-size:15px}
+  .scale{gap:7px}
+  .scale label{padding:14px 0;font-size:15px}
+  .field input,.field select,.field textarea{padding:12px 12px;font-size:16px}  /* 16px prepreči zoom na iOS */
+  .card{padding:17px 16px}
+  .week{padding:16px 15px}
+  .step h2{font-size:16px}
+  .datumvrsta{grid-template-columns:1fr;gap:10px}
+  .hitri{padding-bottom:2px}
+  .hitri .chip{flex:1;text-align:center}
+  .seg-head{margin:18px 0 10px;padding-top:15px}
+  .lrow{grid-template-columns:16px minmax(0,1fr) auto 58px;padding:13px 14px}
+  .arch-day{grid-template-columns:70px minmax(0,1fr);row-gap:3px}
+  .arch-day .hh{grid-column:2;text-align:left;color:var(--ink-2)}
+  .arch-day .tt{white-space:normal}   /* časi naj se prelomijo, ne skrajšajo */
+  .wrow{grid-template-columns:1fr;gap:9px}
+  .wrow .act{grid-row:auto}
+  .wrow .act .chip{width:100%}
+  dialog .dlg-in{padding:20px 18px}
+  .earlygrid{grid-template-columns:1fr}
+  /* gumbe raztegnemo, da so lažje zadeti s prstom */
+  .sendbox .actions .btn,.earlybox .actions .btn,.week .actions .btn{flex:1 1 100%}
+  .sendbox .to code{width:100%;word-break:break-all}
+  .rail{grid-template-columns:1fr;gap:20px;padding:18px}
+  /* na telefonu naj se časi izpišejo v celoti, ne skrajšajo s tremi pikami */
+  .day{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"date amt" "times times" "split rowbtns";
+    row-gap:9px;column-gap:12px;padding:14px 15px;
+  }
+  .day .date{grid-area:date;flex-direction:row;align-items:baseline;gap:8px}
+  .day .date .w{font-size:11px}
+  .day .times{grid-area:times;gap:3px}
+  .day .times span{white-space:normal}
+  .day .splitwrap{grid-area:split;align-self:center;width:auto}
+  .day .amt{grid-area:amt;white-space:nowrap}
+  .day .amt small{display:inline;margin-left:6px}
+  .day .rowbtns{grid-area:rowbtns}
+  .topbar-in{padding:9px 14px;gap:10px}
+  .topbar .who,.divider-v{display:none}
+  main{padding:18px 14px 64px}
+  .logo.lg .word{font-size:38px}
+}
+
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="logo sm" aria-label="Šeško Developement">
+      <span class="word">ŠEŠKO</span>
+      <span class="sub">Developement</span>
+    </div>
+    <div class="divider-v"></div>
+    <div class="who">
+      <b id="whoName">—</b>
+      <span id="whoBoss">—</span>
+    </div>
+    <div class="monthnav">
+      <button type="button" id="prevM" aria-label="Prejšnji mesec">‹</button>
+      <div class="label mono" id="mLabel">—</div>
+      <button type="button" id="nextM" aria-label="Naslednji mesec">›</button>
+    </div>
+    <button type="button" class="icon-btn" id="openArchive">Arhiv</button>
+    <button type="button" class="icon-btn" id="openSettings">Nastavitve</button>
+  </div>
+</header>
+
+<main>
+  <div class="banners" id="banners"></div>
+
+  <!-- ===== 01 VNOS UR ===== -->
+  <section class="block" id="s-vnos">
+    <div class="step"><span class="n">01</span><h2 id="entryTitle">Vnos ur</h2></div>
+    <div class="card">
+      <div class="datumvrsta">
+        <div class="field">
+          <label for="inDate">Datum</label>
+          <input type="date" id="inDate">
+          <span class="hint" id="dateHint">&nbsp;</span>
+        </div>
+        <div class="hitri">
+          <button type="button" class="chip" id="btnToday">Danes</button>
+          <button type="button" class="chip" id="btnYesterday">Včeraj</button>
+        </div>
+      </div>
+
+      <div class="seg-head first">
+        <i class="swatch" style="background:var(--work)"></i><b>Delo</b>
+        <span class="amt mono" id="calcWork">0:00</span>
+      </div>
+      <div class="timepair">
+        <div class="field"><label for="wFrom">Od</label><input type="time" id="wFrom" step="300"></div>
+        <div class="dash">–</div>
+        <div class="field"><label for="wTo">Do</label><input type="time" id="wTo" step="300"></div>
+      </div>
+
+      <div class="seg-head">
+        <i class="swatch" style="background:var(--drive)"></i><b>Vožnja</b>
+        <span class="amt mono" id="calcDrive">0:00</span>
+      </div>
+      <div class="rowgrid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">
+        <div>
+          <div class="eyebrow" style="margin-bottom:7px">Na delovišče</div>
+          <div class="timepair">
+            <div class="field"><label for="d1From">Od</label><input type="time" id="d1From" step="300"></div>
+            <div class="dash">–</div>
+            <div class="field"><label for="d1To">Do</label><input type="time" id="d1To" step="300"></div>
+          </div>
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:7px">Nazaj</div>
+          <div class="timepair">
+            <div class="field"><label for="d2From">Od</label><input type="time" id="d2From" step="300"></div>
+            <div class="dash">–</div>
+            <div class="field"><label for="d2To">Do</label><input type="time" id="d2To" step="300"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="seg-head">
+        <i class="swatch" style="background:repeating-linear-gradient(45deg,#5F7078 0 3px,#7F8E95 3px 6px)"></i><b>Počitek</b>
+        <span class="opt">malica, odmor — neobvezno</span>
+        <span class="amt mono" id="calcRest">0:00</span>
+      </div>
+      <div class="timepair">
+        <div class="field"><label for="rFrom">Od</label><input type="time" id="rFrom" step="300"></div>
+        <div class="dash">–</div>
+        <div class="field"><label for="rTo">Do</label><input type="time" id="rTo" step="300"></div>
+      </div>
+
+      <div class="field" style="margin-top:20px">
+        <label for="dNote">Opomba (neobvezno)</label>
+        <input type="text" id="dNote" placeholder="npr. Adria Celje – menjava vitla" maxlength="140">
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnSaveDay">Shrani dan</button>
+        <button type="button" class="btn ghost" id="btnClearDay">Počisti</button>
+        <span class="saved-flash" id="daySaved">Shranjeno</span>
+        <span style="margin-left:auto;color:var(--ink-3);font-size:11.5px" id="overlapHint"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 02 DNEVI ===== -->
+  <section class="block" id="s-dnevi">
+    <div class="step"><span class="n">02</span><h2>Dnevi v mesecu</h2></div>
+    <div class="listhead">
+      <span class="eyebrow" id="daysCount">—</span>
+      <div class="spacer"></div>
+      <button type="button" class="chip" id="chipWeekend" aria-pressed="false">Samo vikendi</button>
+    </div>
+    <div id="dayList"></div>
+  </section>
+
+  <!-- ===== 03 TEDNI ===== -->
+  <section class="block" id="s-tedni">
+    <div class="step"><span class="n">03</span><h2>Tedenske ocene</h2><p>Ob koncu vsakega tedna.</p></div>
+    <div id="weekList"></div>
+  </section>
+
+  <!-- ===== 04 MESEC ===== -->
+  <section class="block" id="s-mesec">
+    <div class="step"><span class="n">04</span><h2>Zaključek meseca</h2></div>
+    <div class="card">
+      <div class="lockbar" id="monthLock" hidden><b>Poročilo je oddano.</b> Odgovori so zaklenjeni — če jih moraš popraviti, najprej prekliči oznako o pošiljanju spodaj.</div>
+      <div class="scaleq">
+        <div class="q"><label for="effRange">Moja učinkovitost</label><span class="read mono" id="effRead">—</span></div>
+        <div style="display:flex;gap:14px;align-items:center;max-width:450px">
+          <input type="range" id="effRange" min="0" max="100" step="5" value="80" style="flex:1;accent-color:#1B4E9B">
+          <input type="number" id="effNum" min="0" max="100" step="1" class="mono" style="width:80px;background:var(--field);border:1px solid var(--field-edge);border-radius:8px;padding:8px 10px">
+        </div>
+      </div>
+      <div class="rowgrid" style="max-width:520px;margin-top:20px">
+        <div class="field"><label for="injAll">Število poškodb</label><input type="number" id="injAll" min="0" step="1" value="0" class="mono"></div>
+        <div class="field"><label for="injBad">Število resnih poškodb</label><input type="number" id="injBad" min="0" step="1" value="0" class="mono"></div>
+      </div>
+      <div class="field" style="margin-top:16px">
+        <label for="mNote">Opombe za vodjo (neobvezno)</label>
+        <textarea id="mNote" placeholder="Karkoli, kar naj vodja ve o tem mesecu."></textarea>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnSaveMonth">Shrani odgovore</button>
+        <span class="saved-flash" id="monthSaved">Shranjeno</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 05 POVZETEK ===== -->
+  <section class="block" id="s-povzetek" style="margin-bottom:0">
+    <div class="step"><span class="n">05</span><h2 id="sumTitle">Povzetek meseca</h2></div>
+
+    <div class="rail">
+      <div class="donut-wrap" id="donutWrap">
+        <svg class="donut" viewBox="0 0 184 184" role="img" aria-labelledby="donutTitle">
+          <title id="donutTitle">Razmerje med delom, vožnjo in počitkom</title>
+          <defs>
+            <pattern id="hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+              <rect width="7" height="7" fill="#5F7078"></rect>
+              <rect width="3" height="7" fill="#7F8E95"></rect>
+            </pattern>
+          </defs>
+          <circle cx="92" cy="92" r="62" fill="none" stroke="#EDF1F6" stroke-width="27"></circle>
+          <circle class="seg" id="segWork" cx="92" cy="92" r="62" fill="none" stroke="#1B4E9B" stroke-width="27" transform="rotate(-90 92 92)"></circle>
+          <circle class="seg" id="segDrive" cx="92" cy="92" r="62" fill="none" stroke="#B8781F" stroke-width="27" transform="rotate(-90 92 92)"></circle>
+          <circle class="seg" id="segRest" cx="92" cy="92" r="62" fill="none" stroke="url(#hatch)" stroke-width="27" transform="rotate(-90 92 92)"></circle>
+        </svg>
+        <div class="donut-center">
+          <div class="big mono" id="dcBig">0:00</div>
+          <div class="small">skupaj</div>
+        </div>
+        <div class="tip" id="donutTip"></div>
+      </div>
+      <div>
+        <div class="legend" id="legend"></div>
+        <p class="railnote" id="railNote">Vnesi prvi dan, da se izračuna razmerje.</p>
+      </div>
+    </div>
+
+    <div class="stats" id="statGrid"></div>
+
+    <details class="reportbox">
+      <summary>Celotno poročilo, kot ga bo prejel vodja</summary>
+      <pre class="report" id="reportPre"></pre>
+    </details>
+
+    <div class="sendbox">
+      <div class="to">
+        <span class="eyebrow">Prejemnik</span>
+        <code id="bossOut">—</code>
+        <button type="button" class="chip" id="editBoss">Spremeni</button>
+      </div>
+      <div class="actions" style="margin-top:0">
+        <button type="button" class="btn primary" id="btnMail">Pripravi e-pošto</button>
+        <button type="button" class="btn ghost" id="btnCopy">Kopiraj poročilo</button>
+        <button type="button" class="btn ghost" id="btnSent">Označi kot poslano</button>
+      </div>
+      <p class="note" id="sendNote"></p>
+    </div>
+
+    <div class="earlybox">
+      <div class="eyebrow">Predčasna oddaja</div>
+      <p class="note" style="margin:7px 0 15px">
+        Če greš na bolniško, daš odpoved ali moraš ure oddati sredi meseca.
+        Pošlje ure, vpisane do danes.
+      </p>
+      <div class="earlygrid">
+        <div class="field">
+          <label for="earlyReason">Razlog</label>
+          <select id="earlyReason">
+            <option>Bolniška odsotnost</option>
+            <option>Odpoved delovnega razmerja</option>
+            <option>Konec dela na projektu</option>
+            <option>Dopust</option>
+            <option value="__other">Drugo …</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="earlyNote">Pojasnilo (neobvezno)</label>
+          <input type="text" id="earlyNote" maxlength="120" placeholder="npr. odsoten do nadaljnjega">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="btnEarlySend">Pošlji zdaj vodji</button>
+        <span class="saved-flash" id="earlySent">Poslano</span>
+      </div>
+      <p class="note" id="earlyInfo"></p>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlgArchive" class="wide">
+  <form method="dialog" class="dlg-in">
+    <h2>Arhiv</h2>
+    <p class="sub">Vsi vneseni dnevi, mesec po mesec. Odpri mesec, da vidiš dneve; klikni <b>Pokaži mesec</b>, da preklopiš nanj.</p>
+    <div id="archList"></div>
+    <div class="actions">
+      <button class="btn ghost" value="cancel">Zapri</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings">
+  <form method="dialog" class="dlg-in">
+    <div class="dlg-logo">
+      <div class="logo lg" aria-label="Šeško Developement">
+        <span class="word">ŠEŠKO</span>
+        <span class="sub">Developement</span>
+      </div>
+    </div>
+    <h2 id="dlgTitle">Preden začneš</h2>
+    <p class="sub">Tvoji podatki in podatki vodje. Uporabijo se v mesečnem poročilu.</p>
+    <div class="stack">
+      <div class="field"><label for="setName">Tvoje ime in priimek</label><input type="text" id="setName" placeholder="Tomi Šeško" autocomplete="name"></div>
+      <div class="field"><label for="setMail">Tvoj e-mail</label><input type="email" id="setMail" placeholder="ime@podjetje.si" autocomplete="email"></div>
+      <div class="field"><label for="setCompany">Podjetje</label><input type="text" id="setCompany" placeholder="Šeško Developement" autocomplete="organization"></div>
+      <div class="divider" style="margin:5px 0 0"></div>
+      <div class="field"><label for="setBossName">Ime in priimek vodje</label><input type="text" id="setBossName" placeholder="Megi Podbregar"></div>
+      <div class="field"><label for="setBoss">E-mail vodje</label><input type="email" id="setBoss" placeholder="ime@podjetje.si"><span class="hint">Tja gre mesečno poročilo.</span></div>
+    </div>
+
+    <div id="accountBox"></div>
+
+    <div class="actions">
+      <button class="btn primary" id="btnSaveSettings" value="save">Shrani in začni</button>
+      <button class="btn ghost" value="cancel" formnovalidate>Zapri</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "delovnik.v1";
+  var state = { profile: {}, days: {}, weeks: {}, months: {} };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var p = JSON.parse(raw);
+        state.profile = p.profile || {}; state.days = p.days || {};
+        state.weeks = p.weeks || {}; state.months = p.months || {};
+      }
+    } catch (e) { /* blocked storage — run in memory */ }
+  }
+  var storageBroken = false;
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { if (!storageBroken) { storageBroken = true; toast("Brskalnik ne shranjuje podatkov na tej napravi."); } }
+    // Optional cloud sync, installed only by the self-hosted build.
+    if (typeof window.__sync === "function") { try { window.__sync(state); } catch (e) {} }
+  }
+  // Handles for the sync layer; harmless where none is installed.
+  window.__delovnikGet = function () { return state; };
+  window.__delovnikSet = function (p) {
+    if (!p || typeof p !== "object") return false;
+    state.profile = p.profile || {}; state.days = p.days || {};
+    state.weeks = p.weeks || {}; state.months = p.months || {};
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    renderAll();
+    return true;
+  };
+  window.__delovnikToast = function (m) { toast(m); };
+
+  /* ---------- dates & time ---------- */
+  var DAYS = ["ned", "pon", "tor", "sre", "čet", "pet", "sob"];
+  var MONTHS = ["januar","februar","marec","april","maj","junij","julij","avgust","september","oktober","november","december"];
+  // Locative ("v ...") — Slovenian drops or shifts the stem vowel in several months.
+  var MONTHS_LOC = ["januarju","februarju","marcu","aprilu","maju","juniju",
+                    "juliju","avgustu","septembru","oktobru","novembru","decembru"];
+  // Slovenian has a dual: 1 teden, 2 tedna, 3-4 tedni, 5+ tednov.
+  function plural(n, forms) {
+    var r = Math.abs(n) % 100;
+    if (r === 1) return forms[0];
+    if (r === 2) return forms[1];
+    if (r === 3 || r === 4) return forms[2];
+    return forms[3];
+  }
+  var F_DAY = ["dan", "dneva", "dnevi", "dni"];
+  var F_WEEK = ["teden", "tedna", "tedni", "tednov"];
+  var F_WEEKEND = ["vikend dan", "vikend dneva", "vikend dnevi", "vikend dni"];
+  var F_ENTRY = ["vnos", "vnosa", "vnosi", "vnosov"];
+  var F_ENTERED = ["vnesen dan", "vnesena dneva", "vneseni dnevi", "vnesenih dni"];
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseISO(s) { var a = s.split("-"); return new Date(+a[0], +a[1] - 1, +a[2]); }
+  function isWeekend(s) { var g = parseISO(s).getDay(); return g === 0 || g === 6; }
+
+  function isoWeek(d) {
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
+    var week1 = new Date(t.getFullYear(), 0, 4);
+    var n = 1 + Math.round(((t - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    return { week: n, key: t.getFullYear() + "-W" + pad(n) };
+  }
+  function mondayOf(d) {
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    t.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+    return t;
+  }
+  function toMin(s) {
+    if (!s) return null;
+    var a = s.split(":"); if (a.length < 2) return null;
+    var m = (+a[0]) * 60 + (+a[1]);
+    return isFinite(m) ? m : null;
+  }
+  function span(from, to) {
+    var a = toMin(from), b = toMin(to);
+    if (a === null || b === null) return null;
+    if (b <= a) b += 1440;
+    return [a, b];
+  }
+  function len(s) { return s ? s[1] - s[0] : 0; }
+  function overlap(a, b) { return (!a || !b) ? 0 : Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0])); }
+  function hm(min) { min = Math.max(0, Math.round(min)); return Math.floor(min / 60) + ":" + pad(min % 60); }
+  function pct(n) { return (Math.round(n * 10) / 10).toString().replace(".", ",") + " %"; }
+  function num(n, dec) { return n.toFixed(dec === undefined ? 1 : dec).replace(".", ","); }
+
+  /* Driving and breaks that fall inside the work span come out of work, so the
+     three figures add up to the real day instead of double-counting it. */
+  function dayTotals(rec) {
+    if (!rec) return { work: 0, drive: 0, rest: 0, overlap: 0 };
+    var w = span(rec.wFrom, rec.wTo);
+    var d1 = span(rec.d1From, rec.d1To), d2 = span(rec.d2From, rec.d2To);
+    var r = span(rec.rFrom, rec.rTo);
+    var ov = overlap(w, d1) + overlap(w, d2) + overlap(w, r);
+    return { work: Math.max(0, len(w) - ov), drive: len(d1) + len(d2), rest: len(r), overlap: ov };
+  }
+
+  /* ---------- month scope ---------- */
+  var today = new Date();
+  var view = { y: today.getFullYear(), m: today.getMonth() };
+  function curMonthKey() { return view.y + "-" + pad(view.m + 1); }
+
+  function daysOfMonth() {
+    var out = [], k = curMonthKey();
+    for (var key in state.days) if (key.indexOf(k) === 0) out.push(key);
+    return out.sort().reverse();
+  }
+  function monthTotals() {
+    var t = { work: 0, drive: 0, rest: 0, days: 0, weekend: 0, weekendAll: 0 };
+    daysOfMonth().forEach(function (k) {
+      var x = dayTotals(state.days[k]);
+      if (x.work + x.drive + x.rest <= 0) return;
+      t.work += x.work; t.drive += x.drive; t.rest += x.rest; t.days++;
+      if (isWeekend(k)) { t.weekend++; t.weekendAll += x.work + x.drive; }
+    });
+    return t;
+  }
+  function weeksOfMonth() {
+    var first = new Date(view.y, view.m, 1), last = new Date(view.y, view.m + 1, 0);
+    var cur = mondayOf(first), out = [], seen = {};
+    while (cur <= last) {
+      var w = isoWeek(cur);
+      if (!seen[w.key]) {
+        seen[w.key] = 1;
+        out.push({ key: w.key, week: w.week, start: new Date(cur),
+                   end: new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 6) });
+      }
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+    }
+    return out;
+  }
+  function weekTotals(w) {
+    var t = { work: 0, drive: 0, rest: 0 }, c = new Date(w.start);
+    while (c <= w.end) {
+      var x = dayTotals(state.days[iso(c)]);
+      t.work += x.work; t.drive += x.drive; t.rest += x.rest;
+      c = new Date(c.getFullYear(), c.getMonth(), c.getDate() + 1);
+    }
+    return t;
+  }
+  function midnight() { return new Date(today.getFullYear(), today.getMonth(), today.getDate()); }
+  function weekIsPast(w) { return w.end < midnight(); }
+  function monthIsOver() { return new Date(view.y, view.m + 1, 0) < midnight(); }
+  function daysLeftInMonth() {
+    if (view.y !== today.getFullYear() || view.m !== today.getMonth()) return monthIsOver() ? -1 : 99;
+    return new Date(view.y, view.m + 1, 0).getDate() - today.getDate();
+  }
+
+  var RISK = ["", "zanemarljivo", "nizko", "zmerno", "visoko", "kritično"];
+  var CPLX = ["", "rutinsko", "enostavno", "zmerno", "zahtevno", "zelo zahtevno"];
+
+  /* ---------- helpers ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  var toastT;
+  function toast(msg) {
+    var el = $("toast"); el.textContent = msg; el.classList.add("on");
+    clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove("on"); }, 2800);
+  }
+  function flash(el) { el.classList.add("on"); setTimeout(function () { el.classList.remove("on"); }, 1600); }
+
+  /* ---------- donut ---------- */
+  var C = 2 * Math.PI * 62;
+  var SLICES = [
+    { id: "segWork", key: "work", name: "Delo", sw: "background:#1B4E9B" },
+    { id: "segDrive", key: "drive", name: "Vožnja", sw: "background:#B8781F" },
+    { id: "segRest", key: "rest", name: "Počitek", sw: "background:repeating-linear-gradient(45deg,#5F7078 0 3px,#7F8E95 3px 6px)" }
+  ];
+  function renderDonut(t) {
+    var tot = t.work + t.drive + t.rest;
+    if (tot <= 0) {
+      SLICES.forEach(function (s) { $(s.id).setAttribute("stroke-dasharray", "0 " + C); });
+      $("dcBig").textContent = "0:00";
+      return;
+    }
+    var nonZero = SLICES.filter(function (s) { return t[s.key] > 0; }).length;
+    var gap = nonZero > 1 ? 3 : 0, acc = 0;
+    SLICES.forEach(function (s) {
+      var f = t[s.key] / tot, el = $(s.id), l = Math.max(0, f * C - gap);
+      el.setAttribute("stroke-dasharray", l + " " + (C - l));
+      el.setAttribute("transform", "rotate(" + (-90 + acc * 360) + " 92 92)");
+      acc += f;
+    });
+    $("dcBig").textContent = hm(tot);
+  }
+  (function donutHover() {
+    var wrap = $("donutWrap"), tip = $("donutTip");
+    SLICES.forEach(function (s) {
+      var el = $(s.id);
+      el.addEventListener("mousemove", function (ev) {
+        var t = monthTotals(), tot = t.work + t.drive + t.rest;
+        if (tot <= 0 || t[s.key] <= 0) return;
+        var r = wrap.getBoundingClientRect();
+        tip.textContent = s.name + " · " + hm(t[s.key]) + " · " + pct(t[s.key] / tot * 100);
+        tip.style.left = (ev.clientX - r.left) + "px";
+        tip.style.top = (ev.clientY - r.top) + "px";
+        tip.classList.add("on");
+        wrap.setAttribute("data-hover", "1");
+        SLICES.forEach(function (o) { $(o.id).classList.toggle("on", o.key === s.key); });
+      });
+      el.addEventListener("mouseleave", function () {
+        tip.classList.remove("on"); wrap.removeAttribute("data-hover");
+        SLICES.forEach(function (o) { $(o.id).classList.remove("on"); });
+      });
+    });
+  })();
+
+  /* ---------- summary ---------- */
+  function renderSummary() {
+    var t = monthTotals(), tot = t.work + t.drive + t.rest;
+    renderDonut(t);
+    $("sumTitle").textContent = "Povzetek — " + MONTHS[view.m] + " " + view.y;
+
+    var rows = SLICES.map(function (s) {
+      return '<div class="lrow"><i class="swatch" style="' + s.sw + '"></i>' +
+        '<span class="name">' + s.name + '</span>' +
+        '<span class="h mono">' + hm(t[s.key]) + '</span>' +
+        '<span class="p mono">' + (tot ? pct(t[s.key] / tot * 100) : "—") + "</span></div>";
+    }).join("");
+    rows += '<div class="lrow total"><span></span><span class="name">Skupaj</span>' +
+      '<span class="h mono">' + hm(tot) + '</span><span class="p mono">' + (tot ? "100 %" : "—") + "</span></div>";
+    $("legend").innerHTML = rows;
+
+    $("railNote").textContent = tot
+      ? t.days + " " + plural(t.days, F_ENTERED) +
+        (t.weekend ? ", od tega " + t.weekend + " " + plural(t.weekend, F_WEEKEND) : "") +
+        " · skupaj " + num(tot / 60) + " h v " + MONTHS_LOC[view.m] + "."
+      : "Vnesi prvi dan, da se izračuna razmerje.";
+
+    var a = monthAnswers(), avg = weekAverages();
+    var cells = [
+      ["Delo", hm(t.work), false],
+      ["Vožnja", hm(t.drive), false],
+      ["Počitek", hm(t.rest), false],
+      ["Tveganje ø", avg ? num(avg.risk) + "/5" : "—", false],
+      ["Kompleksnost ø", avg ? num(avg.cplx) + "/5" : "—", false],
+      ["Učinkovitost", a.eff !== undefined ? a.eff + " %" : "—", false],
+      ["Poškodbe", a.inj !== undefined ? String(a.inj) : "—", a.inj > 0],
+      ["Resne poškodbe", a.injBad !== undefined ? String(a.injBad) : "—", a.injBad > 0]
+    ];
+    $("statGrid").innerHTML = cells.map(function (c) {
+      return '<div class="stat' + (c[2] ? " alarm" : "") + '"><div class="k">' + esc(c[0]) +
+        '</div><div class="v mono">' + esc(c[1]) + "</div></div>";
+    }).join("");
+  }
+
+  /* ---------- day list ---------- */
+  var weekendOnly = false;
+  function renderDays() {
+    var all = daysOfMonth();
+    var keys = all.filter(function (k) { return !weekendOnly || isWeekend(k); });
+    $("daysCount").textContent = all.length ? all.length + " " + plural(all.length, F_ENTRY) : "ni vnosov";
+    if (!keys.length) {
+      $("dayList").innerHTML = '<div class="empty">' +
+        (weekendOnly ? "Ta mesec ni vikend vnosov." : "Še ni vnosov za ta mesec.") + "</div>";
+      return;
+    }
+    var html = '<div class="days">';
+    keys.forEach(function (k) {
+      var rec = state.days[k], x = dayTotals(rec), d = parseISO(k), we = isWeekend(k);
+      var tot = x.work + x.drive + x.rest || 1;
+      var wTimes = (rec.wFrom && rec.wTo) ? rec.wFrom + "–" + rec.wTo : "—";
+      var dParts = [];
+      if (rec.d1From && rec.d1To) dParts.push(rec.d1From + "–" + rec.d1To);
+      if (rec.d2From && rec.d2To) dParts.push(rec.d2From + "–" + rec.d2To);
+      html += '<div class="day' + (we ? " weekend" : "") + '">' +
+        '<div class="date"><span class="d mono">' + d.getDate() + ". " + (d.getMonth() + 1) + '.</span>' +
+          '<span class="w">' + DAYS[d.getDay()] + "</span></div>" +
+        '<div class="times">' +
+          '<span><i>delo</i> <b class="mono">' + esc(wTimes) + "</b>" +
+            (x.rest > 0 ? ' <i>· počitek</i> <b class="mono">' + hm(x.rest) + "</b>" : "") + "</span>" +
+          '<span><i>vožnja</i> <b class="mono">' + (dParts.length ? esc(dParts.join("  ·  ")) : "—") + "</b>" +
+            (rec.note ? ' <i>· ' + esc(rec.note) + "</i>" : "") + "</span></div>" +
+        '<div class="splitwrap"><div class="split">' +
+          '<i style="background:#1B4E9B;width:' + (x.work / tot * 100) + '%"></i>' +
+          '<i style="background:#B8781F;width:' + (x.drive / tot * 100) + '%"></i>' +
+          '<i style="background:#5F7078;width:' + (x.rest / tot * 100) + '%"></i></div></div>' +
+        '<div class="amt mono">' + hm(x.work) + '<small>+ ' + hm(x.drive) + " vožnja</small></div>" +
+        '<div class="rowbtns">' +
+          '<button type="button" data-edit="' + k + '" title="Uredi" aria-label="Uredi ' + k + '">✎</button>' +
+          '<button type="button" data-del="' + k + '" title="Izbriši" aria-label="Izbriši ' + k + '">✕</button>' +
+        "</div></div>";
+    });
+    $("dayList").innerHTML = html + "</div>";
+  }
+
+  /* ---------- weeks ---------- */
+  function missingWeeks() {
+    return weeksOfMonth().filter(function (w) {
+      var a = state.weeks[w.key];
+      return weekIsPast(w) && (!a || !a.risk || !a.cplx);
+    });
+  }
+  function weekSaved(a) { return !!(a && a.risk && a.cplx); }
+  function weekRange(w) {
+    return w.start.getDate() + ". " + (w.start.getMonth() + 1) + ". – " +
+           w.end.getDate() + ". " + (w.end.getMonth() + 1) + ". " + w.end.getFullYear();
+  }
+  var LVL_COLOR = ["", "var(--ok)", "var(--ok)", "var(--mid)", "var(--high)", "var(--crit)"];
+
+  /* Only the week in progress carries a form. Saving it collapses the card to a
+     summary row; once the month is over every rating is read-only. */
+  var editingWeek = null;
+  function renderWeeks() {
+    var locked = monthIsOver();
+    var curKey = isoWeek(today).key;
+    var html = "";
+
+    if (locked) {
+      html += '<div class="lockbar"><b>Mesec je zaključen.</b> Ocen ni več mogoče spreminjati — takšne gredo v poročilo.</div>';
+    }
+
+    weeksOfMonth().forEach(function (w) {
+      var a = state.weeks[w.key] || {};
+      var saved = weekSaved(a);
+      var isCurrent = w.key === curKey;
+      var open = !locked && (editingWeek === w.key || (isCurrent && !saved && editingWeek === null));
+      html += open ? weekFormHtml(w, a, isCurrent) : weekRowHtml(w, a, saved, locked, isCurrent);
+    });
+
+    $("weekList").innerHTML = html;
+  }
+
+  function weekFormHtml(w, a, isCurrent) {
+    var t = weekTotals(w);
+    return '<div class="week current" id="w-' + w.key + '">' +
+      '<header><span class="eyebrow">Teden ' + w.week + "</span><h3>" + esc(weekRange(w)) + "</h3>" +
+      '<span class="status ' + (isCurrent ? "open" : "todo") + '">' + (isCurrent ? "ta teden" : "dopolni") + "</span></header>" +
+      '<p class="wkhours mono">' + hm(t.work) + " delo · " + hm(t.drive) + " vožnja · " + hm(t.rest) + " počitek</p>" +
+      scaleHtml(w.key, "risk", "Ocena tveganja dela", a.risk, RISK) +
+      scaleHtml(w.key, "cplx", "Kompleksnost problemov", a.cplx, CPLX) +
+      '<div class="field"><label for="wn-' + w.key + '">Pripombe (neobvezno)</label>' +
+      '<input type="text" id="wn-' + w.key + '" maxlength="180" value="' + esc(a.note || "") +
+      '" placeholder="Dogodki, zastoji, skoraj-nezgode…"></div>' +
+      '<div class="actions">' +
+        '<button type="button" class="btn primary" data-wsave="' + w.key + '">Shrani</button>' +
+        (weekSaved(a) ? '<button type="button" class="btn ghost" data-wcancel="1">Prekliči</button>' : "") +
+      "</div></div>";
+  }
+
+  function weekRowHtml(w, a, saved, locked, isCurrent) {
+    var lvl = function (v, words) {
+      return '<span class="lvl"><i style="background:' + LVL_COLOR[v] + '"></i>' + v + "/5</span> " +
+             '<em>' + words[v] + "</em>";
+    };
+    var h = '<div class="wrow' + (saved ? "" : " unrated") + '" id="w-' + w.key + '">' +
+      '<div class="id"><b>Teden ' + w.week + "</b><span>" + esc(weekRange(w)) + "</span>" +
+      (isCurrent ? '<span class="status open">ta teden</span>' : "") + "</div>";
+
+    if (saved) {
+      h += '<div class="vals"><span><em>tveganje</em> ' + lvl(a.risk, RISK) + "</span>" +
+           '<span><em>kompleksnost</em> ' + lvl(a.cplx, CPLX) + "</span></div>";
+      if (a.note) h += '<div class="pripombe"><em>Pripombe:</em> ' + esc(a.note) + "</div>";
+    } else {
+      h += '<div class="vals"><span><em>' + (locked ? "ni bilo ocenjeno" : "še ni ocenjeno") + "</em></span></div>";
+    }
+
+    if (!locked) {
+      h += '<div class="act"><button type="button" class="chip" data-wedit="' + w.key + '">' +
+           (saved ? "Uredi" : "Oceni") + "</button></div>";
+    }
+    return h + "</div>";
+  }
+
+  function scaleHtml(wk, field, label, val, words) {
+    var h = '<div class="scaleq"><div class="q"><label>' + label + "</label>" +
+      '<span class="read" id="read-' + field + "-" + wk + '">' +
+      (val ? val + "/5 · " + words[val] : "ni ocenjeno") + '</span></div><div class="scale">';
+    for (var i = 1; i <= 5; i++) {
+      var id = "s-" + field + "-" + wk + "-" + i;
+      h += '<input type="radio" name="' + field + "-" + wk + '" id="' + id + '" value="' + i +
+           '" aria-label="' + i + " od 5 — " + words[i] + '" data-scale="' + wk + "|" + field + '"' +
+           (val === i ? " checked" : "") + ">" +
+           '<label for="' + id + '" data-lv="' + i + '" title="' + words[i] + '" class="mono">' + i + "</label>";
+    }
+    return h + "</div></div>";
+  }
+
+  /* ---------- month answers ---------- */
+  function monthAnswers() { return state.months[curMonthKey()] || {}; }
+  function monthDone() {
+    var a = monthAnswers();
+    return a.eff !== undefined && a.inj !== undefined && a.injBad !== undefined;
+  }
+  function weekAverages() {
+    var ws = weeksOfMonth().map(function (w) { return state.weeks[w.key]; })
+      .filter(function (a) { return a && a.risk && a.cplx; });
+    if (!ws.length) return null;
+    var r = 0, c = 0;
+    ws.forEach(function (a) { r += a.risk; c += a.cplx; });
+    return { risk: r / ws.length, cplx: c / ws.length, n: ws.length };
+  }
+  function renderMonthForm() {
+    var a = monthAnswers();
+    $("effRange").value = a.eff !== undefined ? a.eff : 80;
+    $("effNum").value = a.eff !== undefined ? a.eff : 80;
+    $("injAll").value = a.inj !== undefined ? a.inj : 0;
+    $("injBad").value = a.injBad !== undefined ? a.injBad : 0;
+    $("mNote").value = a.note || "";
+    $("effRead").textContent = monthDone() ? ($("effRange").value + " %") : "—";
+
+    /* The closing questions are answered once the month is over, so they stay
+       open until the report goes out — then they freeze with it. */
+    var frozen = !!a.sentAt;
+    ["effRange", "effNum", "injAll", "injBad", "mNote", "btnSaveMonth"].forEach(function (id) {
+      $(id).disabled = frozen;
+    });
+    $("monthLock").hidden = !frozen;
+  }
+
+  /* ---------- report ---------- */
+  function padR(s, n) { s = String(s); while (s.length < n) s += " "; return s; }
+  function buildReport(compact, reason) {
+    var p = state.profile, t = monthTotals(), tot = t.work + t.drive + t.rest;
+    var a = monthAnswers(), avg = weekAverages(), L = [];
+    L.push("POROČILO O DELOVNEM ČASU");
+    L.push("Zaposleni: " + (p.name || "—") + (p.email ? "  <" + p.email + ">" : ""));
+    if (p.company) L.push("Podjetje:  " + p.company);
+    L.push("Vodja:     " + (p.bossName || "—") + (p.bossEmail ? "  <" + p.bossEmail + ">" : ""));
+    L.push("Obdobje:   " + MONTHS[view.m] + " " + view.y);
+    if (reason) L.push("Oddano:    predčasno — " + reason + " (" + iso(new Date()) + ")");
+    L.push("");
+    L.push("--- SKUPAJ ---");
+    L.push("Delo:     " + hm(t.work) + "  (" + (tot ? pct(t.work / tot * 100) : "0 %") + ")");
+    L.push("Vožnja:   " + hm(t.drive) + "  (" + (tot ? pct(t.drive / tot * 100) : "0 %") + ")");
+    L.push("Počitek:  " + hm(t.rest) + "  (" + (tot ? pct(t.rest / tot * 100) : "0 %") + ")");
+    L.push("Skupaj:   " + hm(tot));
+    L.push("Dnevi:    " + t.days + (t.weekend ? "  (vikendi: " + t.weekend + ", " + hm(t.weekendAll) + ")" : ""));
+    L.push("");
+    L.push("--- TEDENSKE OCENE (vsak teden posebej) ---");
+    var any = false;
+    weeksOfMonth().forEach(function (w) {
+      var x = state.weeks[w.key], wt = weekTotals(w);
+      L.push("");
+      L.push("Teden " + w.week + " · " + pad(w.start.getDate()) + "." + pad(w.start.getMonth() + 1) + ". – " +
+             pad(w.end.getDate()) + "." + pad(w.end.getMonth() + 1) + ".");
+      if (!x || !x.risk || !x.cplx) {
+        L.push("  " + padR("Ocena:", 24) + "ni bilo oddano");
+      } else {
+        any = true;
+        L.push("  " + padR("Ocena tveganja dela:", 24) + x.risk + "/5 (" + RISK[x.risk] + ")");
+        L.push("  " + padR("Kompleksnost problemov:", 24) + x.cplx + "/5 (" + CPLX[x.cplx] + ")");
+        if (x.note) L.push("  " + padR("Pripombe:", 24) + x.note);
+      }
+      L.push("  " + padR("Ure v tednu:", 24) + hm(wt.work) + " delo · " + hm(wt.drive) + " vožnja · " + hm(wt.rest) + " počitek");
+    });
+    if (!any) L.push("");
+    if (avg) {
+      L.push("");
+      L.push("Povprečje meseca: tveganje " + num(avg.risk) + "/5 · kompleksnost " + num(avg.cplx) +
+             "/5  (" + avg.n + " ocenjen" + (avg.n === 1 ? "" : "i") + " " + plural(avg.n, F_WEEK) + ")");
+    }
+    L.push("");
+    L.push("--- MESEČNA OCENA ---");
+    L.push(padR("Učinkovitost:", 24) + (a.eff !== undefined ? a.eff + " %" : "—"));
+    L.push(padR("Število poškodb:", 24) + (a.inj !== undefined ? a.inj : "—"));
+    L.push(padR("Število resnih poškodb:", 24) + (a.injBad !== undefined ? a.injBad : "—"));
+    if (a.note) L.push("Opombe: " + a.note);
+    if (!compact) {
+      L.push("");
+      L.push("--- PO DNEVIH ---");
+      L.push("dat.    dan  delo          vožnja                    počitek  delo    vožnja");
+      daysOfMonth().slice().reverse().forEach(function (k) {
+        var r = state.days[k], x = dayTotals(r), d = parseISO(k);
+        if (x.work + x.drive + x.rest <= 0) return;
+        var dp = [];
+        if (r.d1From && r.d1To) dp.push(r.d1From + "-" + r.d1To);
+        if (r.d2From && r.d2To) dp.push(r.d2From + "-" + r.d2To);
+        L.push(padR(pad(d.getDate()) + "." + pad(d.getMonth() + 1) + ".", 8) +
+          padR(DAYS[d.getDay()], 5) +
+          padR((r.wFrom && r.wTo) ? r.wFrom + "-" + r.wTo : "—", 14) +
+          padR(dp.join(" ") || "—", 26) +
+          padR(x.rest ? hm(x.rest) : "—", 9) +
+          padR(hm(x.work), 8) + hm(x.drive) +
+          (isWeekend(k) ? "   [vikend]" : "") + (r.note ? "   " + r.note : ""));
+      });
+    }
+    L.push("");
+    L.push("Pripravljeno " + iso(new Date()) + (p.company ? " · " + p.company : ""));
+    return L.join("\n");
+  }
+  function subject(early) {
+    var p = state.profile;
+    return "Delovne ure " + MONTHS[view.m] + " " + view.y +
+           (early ? " (predčasna oddaja)" : "") + (p.name ? " – " + p.name : "");
+  }
+
+  /* ---------- banners ---------- */
+  /* Ob sobotah in nedeljah aplikacija molči: vnos ostane povsem odprt,
+     samo opominov in rumenih opozoril ni. */
+  function danesVikend() { var g = today.getDay(); return g === 0 || g === 6; }
+
+  function renderBanners() {
+    var out = [], p = state.profile, a = monthAnswers();
+    if (!p.name || !p.bossEmail) out.push(["info", "Vpiši svoje podatke in e-mail vodje, da bo poročilo pripravljeno.", "Vpiši", "settings"]);
+
+    if (danesVikend()) {
+      out.push(["mirno", (today.getDay() === 6 ? "Sobota" : "Nedelja") +
+        " — prost dan. Če si delal, ure kar vpiši spodaj.", "", ""]);
+      if (a.sentAt) out.push(["info", "Poročilo za " + MONTHS[view.m] + " je označeno kot poslano (" + a.sentAt + ").", "", ""]);
+      $("banners").innerHTML = out.map(function (b) {
+        return '<div class="banner ' + b[0] + '"><p>' + esc(b[1]) + "</p>" +
+          (b[2] ? '<button type="button" data-jump="' + b[3] + '">' + esc(b[2]) + "</button>" : "") + "</div>";
+      }).join("");
+      return;
+    }
+
+    var mw = missingWeeks();
+    if (mw.length && !monthIsOver()) {
+      out.push(["warn", "Manjka tedenska ocena za " +
+        (mw.length === 1 ? "teden " + mw[0].week : mw.length + " " + plural(mw.length, F_WEEK)) +
+        " — tveganje in kompleksnost.", "Izpolni", "weeks"]);
+    }
+    var left = daysLeftInMonth();
+    if ((monthIsOver() || (left >= 0 && left <= 3)) && !monthDone()) {
+      out.push(["warn", monthIsOver()
+        ? "Mesec " + MONTHS[view.m] + " je zaključen, odgovori še manjkajo."
+        : "Mesec se izteka — še " + left + " " + plural(left, F_DAY) + ". Odgovori na zaključna vprašanja.",
+        "Zaključi mesec", "month"]);
+    }
+    if (monthDone() && !a.sentAt && (monthIsOver() || (left >= 0 && left <= 3))) {
+      out.push(["go", "Poročilo za " + MONTHS[view.m] + " je pripravljeno za pošiljanje.", "Pošlji", "send"]);
+    }
+    if (a.sentAt) out.push(["info", "Poročilo za " + MONTHS[view.m] + " je označeno kot poslano (" + a.sentAt + ").", "", ""]);
+    $("banners").innerHTML = out.map(function (b) {
+      return '<div class="banner ' + b[0] + '"><p>' + esc(b[1]) + "</p>" +
+        (b[2] ? '<button type="button" data-jump="' + b[3] + '">' + esc(b[2]) + "</button>" : "") + "</div>";
+    }).join("");
+  }
+
+  /* ---------- render all ---------- */
+  function renderAll() {
+    var p = state.profile;
+    $("mLabel").textContent = MONTHS[view.m] + " " + view.y;
+    $("whoName").textContent = p.name || "Ni vpisanega imena";
+    $("whoBoss").textContent = p.bossName
+      ? "vodja: " + p.bossName + (p.bossEmail ? " · " + p.bossEmail : "")
+      : (p.bossEmail || "vodja ni vpisan");
+    $("bossOut").textContent = p.bossEmail
+      ? (p.bossName ? p.bossName + " · " + p.bossEmail : p.bossEmail)
+      : "e-mail vodje ni vpisan";
+    renderDays(); renderWeeks(); renderMonthForm(); renderSummary(); renderBanners();
+    var full = buildReport(false);
+    /* Skupne ure in učinkovitost so rdeče — natanko tako, kot jih dobi vodja. */
+    $("reportPre").innerHTML = full.split("\n").map(function (v) {
+      var e = esc(v);
+      return (v.indexOf("--- SKUPAJ ---") === 0 || v.indexOf("Skupaj:") === 0 ||
+              v.indexOf("Učinkovitost:") === 0) ? "<b>" + e + "</b>" : e;
+    }).join("\n");
+    $("btnSent").textContent = monthAnswers().sentAt ? "Prekliči oznako" : "Označi kot poslano";
+    izpisiPredcasne();
+    $("sendNote").innerHTML = "Gumb odpre tvoj e-poštni program z izpolnjenim naslovom, zadevo in besedilom — pošlješ ga sam. " +
+      (encodeURIComponent(full).length > 1800
+        ? "Ker je poročilo dolgo, gre v e-pošto <strong>povzetek</strong>; celoto dobiš z <strong>Kopiraj poročilo</strong> in jo prilepiš."
+        : "Če se program ne odpre, uporabi <strong>Kopiraj poročilo</strong>.");
+  }
+
+  /* ---------- day form ---------- */
+  var TIMEF = ["wFrom", "wTo", "d1From", "d1To", "d2From", "d2To", "rFrom", "rTo"];
+  function recalcDay() {
+    var rec = {};
+    TIMEF.forEach(function (f) { rec[f] = $(f).value; });
+    var x = dayTotals(rec);
+    $("calcWork").textContent = hm(x.work);
+    $("calcDrive").textContent = hm(x.drive);
+    $("calcRest").textContent = hm(x.rest);
+    $("overlapHint").textContent = x.overlap > 0
+      ? "vožnja in počitek znotraj delovnega časa (" + hm(x.overlap) + ") sta odšteta od dela" : "";
+    var ds = $("inDate").value;
+    if (ds) {
+      var d = parseISO(ds);
+      $("dateHint").textContent = DAYS[d.getDay()] + (isWeekend(ds) ? " · vikend" : "") +
+        (state.days[ds] ? " · vnos obstaja, shranjevanje ga prepiše" : "");
+      $("entryTitle").textContent = state.days[ds] ? "Uredi ure" : "Vnos ur";
+    }
+  }
+  function fillDayForm(k) {
+    var r = state.days[k] || {};
+    $("inDate").value = k;
+    TIMEF.forEach(function (f) { $(f).value = r[f] || ""; });
+    $("dNote").value = r.note || "";
+    recalcDay();
+  }
+  function clearDayForm(keepDate) {
+    TIMEF.forEach(function (f) { $(f).value = ""; });
+    $("dNote").value = "";
+    if (!keepDate) $("inDate").value = iso(new Date());
+    recalcDay();
+  }
+
+  /* ---------- events ---------- */
+  $("prevM").onclick = function () { view.m--; if (view.m < 0) { view.m = 11; view.y--; } editingWeek = null; renderAll(); };
+  $("nextM").onclick = function () { view.m++; if (view.m > 11) { view.m = 0; view.y++; } editingWeek = null; renderAll(); };
+  TIMEF.concat(["inDate"]).forEach(function (f) { $(f).addEventListener("input", recalcDay); });
+
+  function jumpMonthTo(ds) {
+    if (!ds) return;
+    var d = parseISO(ds);
+    if (d.getFullYear() !== view.y || d.getMonth() !== view.m) { view.y = d.getFullYear(); view.m = d.getMonth(); editingWeek = null; }
+    renderAll();
+  }
+  $("btnToday").onclick = function () { fillDayForm(iso(new Date())); jumpMonthTo($("inDate").value); };
+  $("btnYesterday").onclick = function () { var d = new Date(); d.setDate(d.getDate() - 1); fillDayForm(iso(d)); jumpMonthTo($("inDate").value); };
+
+  $("btnSaveDay").onclick = function () {
+    var k = $("inDate").value;
+    if (!k) { toast("Izberi datum."); return; }
+    var rec = {};
+    TIMEF.forEach(function (f) { rec[f] = $(f).value; });
+    rec.note = $("dNote").value.trim();
+    var x = dayTotals(rec);
+    if (x.work + x.drive + x.rest <= 0) { toast("Vpiši vsaj en čas."); return; }
+    state.days[k] = rec; save(); flash($("daySaved"));
+    jumpMonthTo(k); renderAll(); clearDayForm(false);
+  };
+  $("btnClearDay").onclick = function () { clearDayForm(true); };
+
+  $("dayList").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button");
+    if (!b) return;
+    if (b.dataset.edit) {
+      fillDayForm(b.dataset.edit);
+      $("s-vnos").scrollIntoView({ block: "start", behavior: "smooth" });
+    } else if (b.dataset.del) {
+      if (confirm("Izbrišem vnos za " + b.dataset.del + "?")) { delete state.days[b.dataset.del]; save(); renderAll(); }
+    }
+  });
+  $("chipWeekend").onclick = function () {
+    weekendOnly = !weekendOnly;
+    this.setAttribute("aria-pressed", weekendOnly ? "true" : "false");
+    renderDays();
+  };
+
+  /* Picking a level only updates the readout — nothing is stored until Shrani. */
+  $("weekList").addEventListener("change", function (ev) {
+    var t = ev.target;
+    if (!t.dataset.scale) return;
+    var parts = t.dataset.scale.split("|"), field = parts[1];
+    var words = field === "risk" ? RISK : CPLX;
+    var read = $("read-" + field + "-" + parts[0]);
+    if (read) read.textContent = t.value + "/5 · " + words[+t.value];
+  });
+
+  $("weekList").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button");
+    if (!b) return;
+
+    if (b.dataset.wedit) {
+      if (monthIsOver()) { toast("Mesec je zaključen — ocen ni več mogoče spreminjati."); return; }
+      editingWeek = b.dataset.wedit;
+      renderWeeks();
+      var card = $("w-" + editingWeek);
+      if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    if (b.dataset.wcancel) { editingWeek = null; renderWeeks(); return; }
+
+    if (b.dataset.wsave) {
+      var wk = b.dataset.wsave;
+      if (monthIsOver()) { toast("Mesec je zaključen — ocen ni več mogoče spreminjati."); return; }
+      var risk = document.querySelector('input[name="risk-' + wk + '"]:checked');
+      var cplx = document.querySelector('input[name="cplx-' + wk + '"]:checked');
+      if (!risk || !cplx) { toast("Izberi oceno tveganja in kompleksnost."); return; }
+      var noteEl = $("wn-" + wk);
+      var a = state.weeks[wk] || (state.weeks[wk] = {});
+      a.risk = +risk.value;
+      a.cplx = +cplx.value;
+      a.note = noteEl ? noteEl.value.trim() : "";
+      a.savedAt = iso(new Date());
+      save();
+      editingWeek = null;
+      renderAll();
+      toast("Teden shranjen — gre v mesečno poročilo.");
+    }
+  });
+
+  $("effRange").addEventListener("input", function () { $("effNum").value = this.value; $("effRead").textContent = this.value + " %"; });
+  $("effNum").addEventListener("input", function () {
+    var v = Math.max(0, Math.min(100, +this.value || 0));
+    $("effRange").value = v; $("effRead").textContent = v + " %";
+  });
+  $("btnSaveMonth").onclick = function () {
+    var a = state.months[curMonthKey()] || (state.months[curMonthKey()] = {});
+    a.eff = Math.max(0, Math.min(100, +$("effNum").value || 0));
+    a.inj = Math.max(0, +$("injAll").value || 0);
+    a.injBad = Math.max(0, +$("injBad").value || 0);
+    if (a.injBad > a.inj) a.inj = a.injBad;
+    a.note = $("mNote").value.trim();
+    save(); flash($("monthSaved")); renderAll();
+  };
+  $("btnSent").onclick = function () {
+    var a = state.months[curMonthKey()] || (state.months[curMonthKey()] = {});
+    a.sentAt = a.sentAt ? null : iso(new Date());
+    save(); renderAll();
+  };
+
+  function odpriMail(polno, kratko, zadeva) {
+    var to = (state.profile.bossEmail || "").trim();
+    var body = encodeURIComponent(polno).length > 1800 ? kratko : polno;
+    var url = "mailto:" + encodeURIComponent(to) + "?subject=" + encodeURIComponent(zadeva) +
+      (state.profile.email ? "&cc=" + encodeURIComponent(state.profile.email) : "") +
+      "&body=" + encodeURIComponent(body);
+    try {
+      var w = window.open(url, "_blank");
+      if (!w) window.location.href = url;
+    } catch (e) { toast("E-pošte ni bilo mogoče odpreti — uporabi Kopiraj poročilo."); }
+  }
+
+  $("btnMail").onclick = function () {
+    if (!(state.profile.bossEmail || "").trim()) { toast("Najprej vpiši e-mail vodje."); openSettings(); return; }
+    odpriMail(buildReport(false), buildReport(true), subject(false));
+  };
+
+  /* --- predčasna oddaja: bolniška, odpoved, sredi meseca --- */
+  function razlogPredcasne() {
+    var izbira = $("earlyReason").value;
+    var dodatno = $("earlyNote").value.trim();
+    if (izbira === "__other") return dodatno;
+    return izbira + (dodatno ? " — " + dodatno : "");
+  }
+  function zabeleziPredcasno(razlog) {
+    var a = state.months[curMonthKey()] || (state.months[curMonthKey()] = {});
+    a.early = a.early || [];
+    a.early.push({ date: iso(new Date()), reason: razlog });
+    save();
+    izpisiPredcasne();
+  }
+  function izpisiPredcasne() {
+    var a = monthAnswers();
+    if (!a.early || !a.early.length) {
+      $("earlyInfo").innerHTML = "Mesečno poročilo bo <strong>kljub temu</strong> odšlo 1. v mesecu. " +
+        "Če hočeš to preprečiti, zgoraj klikni »Označi kot poslano«.";
+      return;
+    }
+    $("earlyInfo").innerHTML = "Že oddano predčasno: " + a.early.map(function (e) {
+      return esc(e.date) + " (" + esc(e.reason) + ")";
+    }).join(", ") + ".";
+  }
+
+  $("btnEarlySend").onclick = function () {
+    var to = (state.profile.bossEmail || "").trim();
+    if (!to) { toast("Najprej vpiši e-mail vodje."); openSettings(); return; }
+    if ($("earlyReason").value === "__other" && !$("earlyNote").value.trim()) {
+      toast("Vpiši pojasnilo."); $("earlyNote").focus(); return;
+    }
+    var t = monthTotals();
+    if (t.work + t.drive + t.rest <= 0) { toast("Za ta mesec ni vpisanih ur."); return; }
+
+    var razlog = razlogPredcasne();
+    if (!confirm("Poročilo za " + MONTHS[view.m] + " " + view.y + " bo poslano na:\n" + to +
+                 "\n\nRazlog: " + razlog + "\nUre: " + hm(t.work) + " delo, " + hm(t.drive) + " vožnja" +
+                 "\n\nNadaljujem?")) return;
+
+    var zadeva = subject(true);
+    var polno = buildReport(false, razlog);
+
+    if (typeof window.__sendNow === "function") {
+      $("btnEarlySend").disabled = true;
+      window.__sendNow({ month: curMonthKey(), reason: razlog, subject: zadeva })
+        .then(function () {
+          $("btnEarlySend").disabled = false;
+          flash($("earlySent")); toast("Poslano vodji.");
+          zabeleziPredcasno(razlog);
+        })
+        .catch(function () {
+          $("btnEarlySend").disabled = false;
+          toast("Strežnik ni odgovoril — odpiram tvojo e-pošto.");
+          odpriMail(polno, buildReport(true, razlog), zadeva);
+        });
+    } else {
+      odpriMail(polno, buildReport(true, razlog), zadeva);
+      zabeleziPredcasno(razlog);
+    }
+  };
+  $("btnCopy").onclick = function () {
+    copy("Za: " + (state.profile.bossEmail || "—") + "\nZadeva: " + subject() + "\n\n" + buildReport(false));
+  };
+  function copy(text) {
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("Poročilo kopirano."); }
+      catch (e) { toast("Kopiranje ni uspelo — označi besedilo v predogledu."); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast("Poročilo kopirano."); }, fallback);
+    } else fallback();
+  }
+
+  $("banners").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-jump]");
+    if (!b) return;
+    var j = b.dataset.jump;
+    if (j === "settings") openSettings();
+    else if (j === "weeks") $("s-tedni").scrollIntoView({ behavior: "smooth", block: "start" });
+    else if (j === "month") $("s-mesec").scrollIntoView({ behavior: "smooth", block: "start" });
+    else if (j === "send") $("s-povzetek").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  /* ---------- archive: every recorded day, month by month ---------- */
+  var dlgArch = $("dlgArchive");
+  function renderArchive() {
+    var byMonth = {};
+    Object.keys(state.days).sort().reverse().forEach(function (k) {
+      var mk = k.slice(0, 7);
+      (byMonth[mk] || (byMonth[mk] = [])).push(k);
+    });
+    var months = Object.keys(byMonth).sort().reverse();
+    if (!months.length) {
+      $("archList").innerHTML = '<div class="empty">Še ni nobenega vnesenega dneva.</div>';
+      return;
+    }
+    var openFirst = true;
+    $("archList").innerHTML = months.map(function (mk) {
+      var y = +mk.slice(0, 4), m = +mk.slice(5, 7) - 1;
+      var tw = 0, td = 0, tr = 0;
+      var rows = byMonth[mk].map(function (k) {
+        var rec = state.days[k], x = dayTotals(rec), d = parseISO(k);
+        tw += x.work; td += x.drive; tr += x.rest;
+        var parts = [];
+        if (rec.wFrom && rec.wTo) parts.push("delo " + rec.wFrom + "–" + rec.wTo);
+        if (rec.d1From && rec.d1To) parts.push("vožnja " + rec.d1From + "–" + rec.d1To);
+        if (rec.d2From && rec.d2To) parts.push(rec.d2From + "–" + rec.d2To);
+        if (x.rest > 0) parts.push("počitek " + hm(x.rest));
+        return '<div class="arch-day' + (isWeekend(k) ? " we" : "") + '">' +
+          '<span class="dd mono">' + pad(d.getDate()) + ". " + pad(d.getMonth() + 1) + ". <em>" + DAYS[d.getDay()] + "</em></span>" +
+          '<span class="tt mono">' + esc(parts.join(" · ") || "—") + (rec.note ? " · " + esc(rec.note) : "") + "</span>" +
+          '<span class="hh mono">' + hm(x.work) + "</span></div>";
+      }).join("");
+      var head = MONTHS[m] + " " + y;
+      var html = '<details class="arch-month"' + (openFirst ? " open" : "") + ">" +
+        "<summary>" + head + '<span class="tot mono">' + byMonth[mk].length + " " +
+        plural(byMonth[mk].length, F_DAY) + " · " + hm(tw) + " delo · " + hm(td) + " vožnja</span></summary>" +
+        rows +
+        '<div class="arch-open"><button type="button" class="chip" data-goto="' + mk + '">Pokaži mesec</button></div>' +
+        "</details>";
+      openFirst = false;
+      return html;
+    }).join("");
+  }
+  $("openArchive").onclick = function () {
+    renderArchive();
+    if (dlgArch.showModal && !dlgArch.open) dlgArch.showModal(); else dlgArch.setAttribute("open", "");
+  };
+  $("archList").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-goto]");
+    if (!b) return;
+    view.y = +b.dataset.goto.slice(0, 4);
+    view.m = +b.dataset.goto.slice(5, 7) - 1;
+    editingWeek = null;
+    renderAll();
+    if (dlgArch.close && dlgArch.open) dlgArch.close();
+    $("s-dnevi").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  /* ---------- settings ---------- */
+  var dlg = $("dlgSettings");
+  function openSettings() {
+    var p = state.profile, first = !p.name && !p.bossEmail;
+    $("setName").value = p.name || ""; $("setMail").value = p.email || "";
+    $("setCompany").value = p.company || ""; $("setBossName").value = p.bossName || "";
+    $("setBoss").value = p.bossEmail || "";
+    $("dlgTitle").textContent = first ? "Preden začneš" : "Nastavitve";
+    $("btnSaveSettings").textContent = first ? "Shrani in začni" : "Shrani";
+    if (dlg.showModal && !dlg.open) dlg.showModal(); else dlg.setAttribute("open", "");
+  }
+  $("openSettings").onclick = openSettings;
+  $("editBoss").onclick = openSettings;
+  $("btnSaveSettings").onclick = function () {
+    state.profile.name = $("setName").value.trim();
+    state.profile.email = $("setMail").value.trim();
+    state.profile.company = $("setCompany").value.trim();
+    state.profile.bossName = $("setBossName").value.trim();
+    state.profile.bossEmail = $("setBoss").value.trim();
+    save(); setTimeout(renderAll, 0);
+  };
+
+  /* ---------- boot ---------- */
+  load();
+  clearDayForm(false);
+  renderAll();
+  if (!state.profile.name && !state.profile.bossEmail) setTimeout(openSettings, 350);
+
+})();
+</script>
+
+<script>
+/* ------------------------------------------------------------------
+   POVEZAVA S STREŽNIKOM
+   Spodnjo vrstico zamenjaj z naslovom svoje Apps Script aplikacije
+   (dobiš ga pri koraku "Nova uvedba" — konča se z /exec).
+   ------------------------------------------------------------------ */
+var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyNeSqPwOZO_Q1ct8ZxMdTub-huLWqRoyqU-gmJRGvosE2_8/exec";
+
+(function () {
+  "use strict";
+
+  var K_TOKEN = "delovnik.token", K_BIO = "delovnik.bio", K_NAME = "delovnik.ime";
+  var K_ZADNJA = "delovnik.zadnja", K_EMAIL = "delovnik.email";
+  var K_BIO_NE = "delovnik.bioPreskocen";
+  var MEJA_MS = 80 * 60 * 60 * 1000;   // po 80 h neaktivnosti ponovna prijava
+  var $ = function (id) { return document.getElementById(id); };
+
+  function shrani(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function beri(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function zbrisi(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  /* Brez naslova strežnika teče stran samostojno, brez prijave. */
+  if (SCRIPT_URL.indexOf("https://script.google.com/") !== 0) {
+    document.body.classList.remove("gate");
+    return;
+  }
+
+  /* ---------------- klic strežnika ---------------- */
+  function poslji(telo) {
+    return fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(telo)
+    }).then(function (r) { return r.json(); });
+  }
+  function sporocilo(el, besedilo, vrsta) {
+    el.textContent = besedilo;
+    el.className = "gate-msg on " + (vrsta || "err");
+  }
+  function pocisti(el) { el.className = "gate-msg"; }
+
+  /* ---------------- stanje zaslona ---------------- */
+  function pokazi(kateri) {
+    zapriNastavitve();
+    ["gateLogin", "gateRegister", "gateBio"].forEach(function (id) {
+      $(id).hidden = id !== kateri;
+    });
+    document.body.classList.add("gate");
+  }
+
+  /* Modalno okno Nastavitev gre v "top layer" in njegova nevidna podlaga
+     prestreže vse klike po prijavnem zaslonu. Dokler traja prijava, ga ne
+     spustimo gor. */
+  function zapriNastavitve() {
+    var d = $("dlgSettings");
+    if (!d) return;
+    try { if (d.open) d.close(); } catch (e) {}
+    d.removeAttribute("open");
+  }
+  (function zaporaNastavitev() {
+    var d = $("dlgSettings");
+    if (!d || d.__zaklenjeno) return;
+    d.__zaklenjeno = true;
+    var izvirni = d.showModal;
+    d.showModal = function () {
+      if (document.body.classList.contains("gate")) return;   // med prijavo ne
+      return izvirni.apply(d, arguments);
+    };
+    // varovalka za prvih nekaj sekund, če bi se okno odprlo po drugi poti
+    var strazar = setInterval(function () {
+      if (document.body.classList.contains("gate")) zapriNastavitve();
+    }, 120);
+    setTimeout(function () { clearInterval(strazar); }, 5000);
+  })();
+  function oznaciDejavnost() { shrani(K_ZADNJA, String(Date.now())); }
+  function sejaPotekla() {
+    var z = parseInt(beri(K_ZADNJA), 10);
+    if (!z) return false;                       // brez zapisa ne odjavljamo
+    return (Date.now() - z) > MEJA_MS;
+  }
+
+  function vstopi() {
+    oznaciDejavnost();
+    document.body.classList.remove("gate");
+    var d = $("dlgSettings");
+    if (d && d.open) d.close();           // pozdravno okno ni več potrebno
+  }
+
+  /* ---------------- passkeyi ----------------
+     Brskalnik opravi pogovor s telefonom, ves pogovor s Hankom pa teče prek
+     Apps Scripta, ker je tam skrivni ključ. Telefon ključa nikoli ne vidi. */
+
+  function passkeyPodprt() {
+    return !!(window.webauthnJSON && window.webauthnJSON.supported && window.webauthnJSON.supported());
+  }
+  /* Hanko vrne možnosti; ovoj {publicKey:...} je lahko že notri ali pa ne. */
+  function ovoj_(o) { return (o && o.publicKey) ? o : { publicKey: o }; }
+
+  function passkeyVpisi(token) {
+    return poslji({ action: "passkeyRegStart", token: token })
+      .then(function (o) {
+        if (!o || !o.ok) throw new Error((o && o.message) || "začetek ni uspel");
+        return window.webauthnJSON.create(ovoj_(o.options));
+      })
+      .then(function (cred) {
+        return poslji({ action: "passkeyRegFinish", token: token, credential: cred });
+      })
+      .then(function (o) {
+        if (!o || !o.ok) throw new Error((o && o.message) || "vpis ni uspel");
+        shrani(K_BIO, "1");
+        return true;
+      });
+  }
+
+  function passkeyPrijava() {
+    return poslji({ action: "passkeyLoginStart" })
+      .then(function (o) {
+        if (!o || !o.ok) throw new Error((o && o.message) || "začetek ni uspel");
+        return window.webauthnJSON.get(ovoj_(o.options));
+      })
+      .then(function (cred) {
+        return poslji({ action: "passkeyLoginFinish", credential: cred });
+      });
+  }
+
+  /* ---------------- prenos podatkov ---------------- */
+  var pill, dot, txt;
+  function status(stanje, oznaka) {
+    if (!dot) return;
+    dot.style.background = { idle: "#3F7D53", busy: "#96690F", bad: "#A8492C" }[stanje] || "#79838D";
+    txt.nodeValue = oznaka;
+    pill.title = oznaka;
+    pill.setAttribute("aria-label", oznaka);
+  }
+  function odjava(sporocilo_) {
+    zbrisi(K_TOKEN); zbrisi(K_BIO); zbrisi(K_NAME); zbrisi("delovnik.v1");
+    location.reload();
+  }
+  function naloziSStreznika(token) {
+    status("busy", "Prenašam…");
+    return poslji({ action: "load", token: token }).then(function (o) {
+      if (o && o.error === "seja") { odjava(); return; }
+      if (o && o.ok && o.state) window.__delovnikSet(o.state);
+      status("idle", "Shranjeno v oblak");
+      vstopi();
+    }).catch(function () {
+      status("bad", "Ni povezave");
+      vstopi();                            // brez povezave delaj s tem, kar je na napravi
+    });
+  }
+
+  var cakalec = null, zadnje = "";
+  window.__sync = function (state) {
+    var token = beri(K_TOKEN);
+    if (!token) return;
+    oznaciDejavnost();
+    clearTimeout(cakalec);
+    cakalec = setTimeout(function () {
+      var telo = JSON.stringify({ action: "save", token: token, state: state });
+      if (telo === zadnje) return;
+      status("busy", "Shranjujem…");
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: telo
+      }).then(function (r) { return r.json(); })
+        .then(function (o) {
+          if (o && o.error === "seja") { odjava(); return; }
+          if (o && o.ok) { zadnje = telo; status("idle", "Shranjeno v oblak"); }
+          else status("bad", "Shranjevanje ni uspelo");
+        })
+        .catch(function () { status("bad", "Ni povezave — shranjeno na napravi"); });
+    }, 1200);
+  };
+
+  window.__sendNow = function (opt) {
+    var token = beri(K_TOKEN);
+    status("busy", "Pošiljam…");
+    return poslji({
+      action: "sendNow", token: token, state: window.__delovnikGet(),
+      month: opt.month, reason: opt.reason, subject: opt.subject
+    }).then(function (o) {
+      if (!o || !o.ok) throw new Error((o && o.message) || "napaka");
+      status("idle", "Poslano vodji");
+      return o;
+    }).catch(function (e) { status("bad", "Pošiljanje ni uspelo"); throw e; });
+  };
+
+  /* ---------------- gumb stanja v vrhnji vrstici ---------------- */
+  function postaviPill() {
+    pill = document.createElement("button");
+    pill.type = "button"; pill.className = "icon-btn"; pill.id = "syncPill";
+    pill.style.cssText = "gap:7px;display:inline-flex;align-items:center";
+    dot = document.createElement("i");
+    dot.style.cssText = "width:8px;height:8px;border-radius:50%;background:#79838D;flex:none";
+    var oznaka = document.createElement("span");
+    oznaka.className = "pill-txt";
+    txt = document.createTextNode("");
+    oznaka.appendChild(txt);
+    pill.appendChild(dot); pill.appendChild(oznaka);
+    var bar = document.querySelector(".topbar-in");
+    if (bar) bar.insertBefore(pill, $("openArchive"));
+    pill.onclick = function () {
+      var t = beri(K_TOKEN);
+      if (t) naloziSStreznika(t);
+    };
+    status("idle", "Shranjeno v oblak");
+  }
+
+  /* ---------------- račun v nastavitvah ---------------- */
+  function postaviRacun() {
+    var box = $("accountBox");
+    if (!box) return;
+    box.innerHTML =
+      '<div class="divider"></div>' +
+      '<div class="eyebrow" style="margin-bottom:9px">Račun</div>' +
+      '<p class="note" style="margin:0 0 12px" id="accWho"></p>' +
+      '<label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;cursor:pointer" id="bioWrap" hidden>' +
+        '<input type="checkbox" id="bioToggle" style="margin-top:3px">' +
+        '<span>Odklepanje z obrazom ali prstnim odtisom na tej napravi' +
+        '<br><span class="hint">Namesto vpisovanja gesla ob vsakem odprtju.</span></span>' +
+      "</label>" +
+      '<div class="actions"><button type="button" class="btn ghost" id="btnLogout">Odjava</button></div>';
+
+    $("accWho").textContent = "Prijavljen kot " + (beri(K_NAME) || "—") + ".";
+    $("btnLogout").onclick = function () {
+      if (confirm("Odjavim te s te naprave?\n\nUre ostanejo shranjene na strežniku.")) odjava();
+    };
+
+    if (passkeyPodprt()) {
+      $("bioWrap").hidden = false;
+      var t = $("bioToggle");
+      t.checked = !!beri(K_BIO);
+      t.onchange = function () {
+        if (!t.checked) { zbrisi(K_BIO); window.__delovnikToast("Passkey na tej napravi izklopljen."); return; }
+        zbrisi(K_BIO_NE);
+        t.disabled = true;
+        passkeyVpisi(beri(K_TOKEN))
+          .then(function () { t.disabled = false; window.__delovnikToast("Hitra prijava vklopljena."); })
+          .catch(function () { t.disabled = false; t.checked = false; window.__delovnikToast("Ni uspelo — poskusi znova."); });
+      };
+    }
+  }
+
+  /* ---------------- prijava in registracija ---------------- */
+  /* Ime biometrije po napravi — samo za besedilo, delovanje je povsod isto. */
+  function imeBiometrije() {
+    var ua = navigator.userAgent || "";
+    if (/iPhone|iPad|iPod/.test(ua)) return "Face ID ali Touch ID";
+    if (/Android/.test(ua)) return "prstni odtis ali obraz";
+    if (/Macintosh/.test(ua)) return "Touch ID";
+    return "biometrijo";
+  }
+
+  function koncajPrijavo() { postaviPill(); postaviRacun(); vstopi(); }
+
+  function poPrijavi(o, ime) {
+    shrani(K_TOKEN, o.token);
+    shrani(K_NAME, ime || "");
+    if (o.state && o.state.profile && o.state.profile.email) shrani(K_EMAIL, o.state.profile.email);
+    oznaciDejavnost();
+    if (o.state) window.__delovnikSet(o.state);
+
+    /* Hitro prijavo ponudimo takoj, ne skrito v Nastavitvah. WebAuthn zahteva
+       pravi tap uporabnika, zato gumb, ne samodejni poskus ob nalaganju. */
+    if (!passkeyPodprt() || beri(K_BIO) || beri(K_BIO_NE)) { koncajPrijavo(); return; }
+    ponudiBiometrijo();
+  }
+
+  function ponudiBiometrijo() {
+    $("gateBioLead").textContent =
+      "Odslej se prijaviš s " + imeBiometrije() + " namesto z geslom. Traja sekundo.";
+    pokazi("gateBio");
+
+    var gumb = $("btnBioOn");
+    gumb.onclick = function () {
+      gumb.disabled = true;
+      gumb.textContent = "Počakaj…";
+      passkeyVpisi(beri(K_TOKEN))
+        .then(function () {
+          koncajPrijavo();
+          window.__delovnikToast("Hitra prijava vklopljena.");
+        })
+        .catch(function () {
+          gumb.disabled = false;
+          gumb.textContent = "Poskusi znova";
+          sporocilo($("gateBioMsg"), "Ni uspelo. Poskusi znova ali preskoči — vklopiš lahko pozneje v Nastavitvah.");
+        });
+    };
+
+    $("bioSkip").onclick = function () {
+      shrani(K_BIO_NE, "1");
+      koncajPrijavo();
+      window.__delovnikToast("Lahko vklopiš pozneje v Nastavitvah.");
+    };
+  }
+
+  $("gateLogin").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var b = $("btnLogin"), m = $("gateLoginMsg");
+    pocisti(m); b.disabled = true; b.textContent = "Prijavljam…";
+    poslji({ action: "login", email: $("liEmail").value.trim(), password: $("liPass").value })
+      .then(function (o) {
+        b.disabled = false; b.textContent = "Prijava";
+        if (!o || !o.ok) { sporocilo(m, (o && o.message) || "Prijava ni uspela."); return; }
+        poPrijavi(o, (o.state && o.state.profile && o.state.profile.name) || $("liEmail").value.trim());
+      })
+      .catch(function () {
+        b.disabled = false; b.textContent = "Prijava";
+        sporocilo(m, "Strežnik ni dosegljiv. Preveri povezavo.");
+      });
+  });
+
+  $("gateRegister").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var b = $("btnRegister"), m = $("gateRegMsg");
+    pocisti(m); b.disabled = true; b.textContent = "Ustvarjam…";
+    poslji({
+      action: "register",
+      email: $("rgEmail").value.trim(), password: $("rgPass").value,
+      name: $("rgName").value.trim(), company: $("rgCompany").value.trim(),
+      bossName: $("rgBossName").value.trim(), bossEmail: $("rgBoss").value.trim()
+    }).then(function (o) {
+        b.disabled = false; b.textContent = "Ustvari račun";
+        if (!o || !o.ok) { sporocilo(m, (o && o.message) || "Registracija ni uspela."); return; }
+        poPrijavi(o, $("rgName").value.trim());
+      })
+      .catch(function () {
+        b.disabled = false; b.textContent = "Ustvari račun";
+        sporocilo(m, "Strežnik ni dosegljiv. Preveri povezavo.");
+      });
+  });
+
+  $("toRegister").onclick = function () { pokazi("gateRegister"); };
+  $("toLogin").onclick = function () { pokazi("gateLogin"); };
+  if (passkeyPodprt()) {
+    $("btnPasskeyLogin").hidden = false;
+    $("gateSep").hidden = false;
+    $("btnPasskeyLogin").onclick = function () {
+      var b = $("btnPasskeyLogin"), m = $("gateLoginMsg");
+      pocisti(m); b.disabled = true; b.textContent = "Počakaj…";
+      passkeyPrijava()
+        .then(function (o) {
+          b.disabled = false; b.textContent = "Prijava s Face ID";
+          if (!o || !o.ok) { sporocilo(m, (o && o.message) || "Passkey ni bil prepoznan."); return; }
+          shrani(K_BIO, "1");
+          poPrijavi(o, (o.state && o.state.profile && o.state.profile.name) || beri(K_NAME) || "");
+        })
+        .catch(function () {
+          b.disabled = false; b.textContent = "Prijava s Face ID";
+          sporocilo(m, "Prijava s passkeyem ni uspela. Vpiši e-mail in geslo.");
+        });
+    };
+  }
+
+  /* ---------------- zagon ---------------- */
+  var token = beri(K_TOKEN);
+  var poteklo = sejaPotekla();
+
+  /* Po 80 h neaktivnosti vedno zahtevamo ponovno prijavo — tudi s passkeyem.
+     S passkeyem je to en tap, brez njega e-mail in geslo. */
+  if (token && poteklo) {
+    zbrisi(K_TOKEN);
+    token = null;
+  }
+
+  if (!token) {
+    pokazi("gateLogin");
+    var zadnjiMail = beri(K_EMAIL);
+    if (zadnjiMail) {
+      $("liEmail").value = zadnjiMail;
+      setTimeout(function () { try { $("liPass").focus(); } catch (e) {} }, 80);
+    }
+    if (poteklo) {
+      sporocilo($("gateLoginMsg"), beri(K_BIO)
+        ? "Nekaj dni te ni bilo. Potrdi z obrazom ali prstom."
+        : "Nekaj dni te ni bilo, zato te je aplikacija odjavila. Vpiši geslo.", "info");
+    }
+  } else {
+    postaviPill(); postaviRacun();
+    naloziSStreznika(token);
+  }
+})();
+</script>
+
+</body>
+</html>
