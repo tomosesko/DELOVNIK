@@ -89,6 +89,19 @@ body.gate #gate{display:flex}
       </div>
     </div>
 
+    <!-- ponudba hitre prijave, takoj po registraciji -->
+    <div id="gateBio" hidden>
+      <h1>Račun je narejen</h1>
+      <p class="lead" id="gateBioLead">Vklopi hitro prijavo, da ti ne bo treba tipkati gesla.</p>
+      <div class="gate-msg" id="gateBioMsg"></div>
+      <div class="gate-form">
+        <button type="button" class="btn primary gate-bio" id="btnBioOn">Vklopi hitro prijavo</button>
+      </div>
+      <div class="gate-alt">
+        <button type="button" id="bioSkip">Preskoči, vpisoval bom geslo</button>
+      </div>
+    </div>
+
     <!-- prijava -->
     <form id="gateLogin" class="gate-form" hidden>
       <div>
@@ -1647,6 +1660,7 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
 
   var K_TOKEN = "delovnik.token", K_BIO = "delovnik.bio", K_NAME = "delovnik.ime";
   var K_ZADNJA = "delovnik.zadnja", K_EMAIL = "delovnik.email";
+  var K_BIO_NE = "delovnik.bioPreskocen";
   var MEJA_MS = 80 * 60 * 60 * 1000;   // po 80 h neaktivnosti ponovna prijava
   var $ = function (id) { return document.getElementById(id); };
 
@@ -1677,7 +1691,7 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
   /* ---------------- stanje zaslona ---------------- */
   function pokazi(kateri) {
     zapriNastavitve();
-    ["gateUnlock", "gateLogin", "gateRegister"].forEach(function (id) {
+    ["gateUnlock", "gateLogin", "gateRegister", "gateBio"].forEach(function (id) {
       $(id).hidden = id !== kateri;
     });
     document.body.classList.add("gate");
@@ -1877,6 +1891,7 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
       t.checked = !!beri(K_BIO);
       t.onchange = function () {
         if (!t.checked) { zbrisi(K_BIO); window.__delovnikToast("Odklepanje izklopljeno."); return; }
+        zbrisi(K_BIO_NE);
         var s = window.__delovnikGet();
         bioVklopi(s.profile.email || "", s.profile.name || "")
           .then(function () { window.__delovnikToast("Odklepanje vklopljeno."); })
@@ -1886,20 +1901,59 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXDD9xMb1F54kVRD8KNyN
   }
 
   /* ---------------- prijava in registracija ---------------- */
+  /* Ime biometrije po napravi — samo za besedilo, delovanje je povsod isto. */
+  function imeBiometrije() {
+    var ua = navigator.userAgent || "";
+    if (/iPhone|iPad|iPod/.test(ua)) return "Face ID ali Touch ID";
+    if (/Android/.test(ua)) return "prstni odtis ali obraz";
+    if (/Macintosh/.test(ua)) return "Touch ID";
+    return "biometrijo";
+  }
+
+  function koncajPrijavo() { postaviPill(); postaviRacun(); vstopi(); }
+
   function poPrijavi(o, ime) {
     shrani(K_TOKEN, o.token);
     shrani(K_NAME, ime || "");
     if (o.state && o.state.profile && o.state.profile.email) shrani(K_EMAIL, o.state.profile.email);
     oznaciDejavnost();
     if (o.state) window.__delovnikSet(o.state);
-    postaviPill(); postaviRacun(); vstopi();
-    bioNaVoljo().then(function (ok) {
-      if (ok && !beri(K_BIO)) {
-        setTimeout(function () {
-          window.__delovnikToast("V Nastavitvah lahko vklopiš odklepanje z obrazom.");
-        }, 1400);
-      }
-    });
+
+    /* Hitro prijavo ponudimo takoj, ne skrito v Nastavitvah. WebAuthn zahteva
+       pravi tap uporabnika, zato gumb, ne samodejni poskus ob nalaganju. */
+    bioNaVoljo().then(function (naVoljo) {
+      if (!naVoljo || beri(K_BIO) || beri(K_BIO_NE)) { koncajPrijavo(); return; }
+      ponudiBiometrijo();
+    }, function () { koncajPrijavo(); });
+  }
+
+  function ponudiBiometrijo() {
+    $("gateBioLead").textContent =
+      "Odslej se prijaviš s " + imeBiometrije() + " namesto z geslom. Traja sekundo.";
+    pokazi("gateBio");
+
+    var gumb = $("btnBioOn");
+    gumb.onclick = function () {
+      var st = window.__delovnikGet();
+      gumb.disabled = true;
+      gumb.textContent = "Počakaj…";
+      bioVklopi((st.profile && st.profile.email) || "", (st.profile && st.profile.name) || "")
+        .then(function () {
+          koncajPrijavo();
+          window.__delovnikToast("Hitra prijava vklopljena.");
+        })
+        .catch(function () {
+          gumb.disabled = false;
+          gumb.textContent = "Poskusi znova";
+          sporocilo($("gateBioMsg"), "Ni uspelo. Poskusi znova ali preskoči — vklopiš lahko pozneje v Nastavitvah.");
+        });
+    };
+
+    $("bioSkip").onclick = function () {
+      shrani(K_BIO_NE, "1");
+      koncajPrijavo();
+      window.__delovnikToast("Lahko vklopiš pozneje v Nastavitvah.");
+    };
   }
 
   $("gateLogin").addEventListener("submit", function (ev) {
